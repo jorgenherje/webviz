@@ -10,6 +10,13 @@ import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { MultiEnsembleSelect } from "@framework/components/MultiEnsembleSelect";
 import { ParameterListFilter } from "@framework/components/ParameterListFilter";
 import { VectorSelector, createVectorSelectorDataFromVectors } from "@framework/components/VectorSelector";
+import {
+    buildTreeData,
+    createVectorSelectorDataFromVectors2,
+    createVectorSelectorDataFromVectors3,
+    createVectorSelectorDataFromVectors4,
+    createVectorSelectorDataFromVectors5,
+} from "@framework/components/VectorSelector/vectorSelector";
 import { fixupEnsembleIdents } from "@framework/utils/ensembleUiHelpers";
 import { Checkbox } from "@lib/components/Checkbox";
 import { CircularProgress } from "@lib/components/CircularProgress";
@@ -49,6 +56,13 @@ enum StatisticsType {
 }
 
 export function Settings({ moduleContext, workbenchSession }: ModuleFCProps<State>) {
+    // Render count for testing
+    const renderCount = React.useRef(0);
+    renderCount.current = renderCount.current + 1;
+    // React.useEffect(function incrementRenderCount() {
+    //     renderCount.current = renderCount.current + 1;
+    // });
+
     const ensembleSet = useEnsembleSet(workbenchSession);
     const statusWriter = useSettingsStatusWriter(moduleContext);
 
@@ -130,9 +144,49 @@ export function Settings({ moduleContext, workbenchSession }: ModuleFCProps<Stat
 
     const selectedVectorNamesHasHistorical =
         ensembleVectorListsHelper.current.hasAnyHistoricalVector(selectedVectorNames);
-    const currentVectorSelectorData = createVectorSelectorDataFromVectors(
+
+    // NOTE:
+    // - Compare vectorNames array with a stored state, and call createVectorSelectorDataFromVectors only when array has changed!
+
+    // START TIMING OF METHODS
+    console.log("************** Render Start **************");
+    const startTime = performance.now();
+    const currentVectorSelectorData1 = createVectorSelectorDataFromVectors(
         ensembleVectorListsHelper.current.vectorsUnion()
     );
+    const endTime = performance.now();
+    console.log("Time to build first tree data: ", endTime - startTime);
+
+    const startTime2 = performance.now();
+    const currentVectorSelectorData2 = createVectorSelectorDataFromVectors2(
+        ensembleVectorListsHelper.current.vectorsUnion()
+    );
+    const endTime2 = performance.now();
+    console.log("Time to build second tree data: ", endTime2 - startTime2);
+
+    const startTime3 = performance.now();
+    const currentVectorSelectorData3 = createVectorSelectorDataFromVectors3(
+        ensembleVectorListsHelper.current.vectorsUnion()
+    );
+    const endTime3 = performance.now();
+    console.log("Time to build third tree data: ", endTime3 - startTime3);
+
+    const startTime4 = performance.now();
+    const currentVectorSelectorData = createVectorSelectorDataFromVectors4(
+        ensembleVectorListsHelper.current.vectorsUnion()
+    );
+    const endTime4 = performance.now();
+    console.log("Time to build fourth tree data: ", endTime4 - startTime4);
+
+    const startTime5 = performance.now();
+    const currentVectorSelectorData5 = createVectorSelectorDataFromVectors5(
+        ensembleVectorListsHelper.current.vectorsUnion()
+    );
+    const endTime5 = performance.now();
+    console.log("Time to build fifth tree data: ", endTime5 - startTime5);
+
+    console.log("************** Render End **************");
+    // END TIMING
 
     const [selectedParameterIdentStr, setSelectedParameterIdentStr] = useValidState<string | null>({
         initialState: null,
@@ -371,6 +425,7 @@ export function Settings({ moduleContext, workbenchSession }: ModuleFCProps<Stat
 
     return (
         <div className="flex flex-col gap-2 overflow-y-auto">
+            <div className="absolute top-10 left-5 italic text-pink-400">(rc={renderCount.current})</div>
             <CollapsibleGroup expanded={false} title="Group by">
                 <RadioGroup
                     value={groupBy}
