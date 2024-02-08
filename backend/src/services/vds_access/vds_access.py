@@ -9,14 +9,19 @@ import httpx
 
 from src import config
 
+import xtgeo
+
 from .response_types import VdsMetadata, VdsFenceMetadata
 from .request_types import (
+    VdsCalculateSurfaceAttributes,
     VdsCoordinates,
     VdsCoordinateSystem,
     VdsInterpolation,
     VdsFenceRequest,
     VdsRequestedResource,
     VdsMetadataRequest,
+    VdsSurface,
+    VdsCalculateAttributesAlongHorizonRequest,
 )
 
 
@@ -78,6 +83,62 @@ class VdsAccess:
 
         metadata = response.json()
         return VdsMetadata(**metadata)
+
+    async def get_calculated_attributes_along_horizon_async(
+        self,
+        xtgeo_surface: xtgeo.RegularSurface,
+        calculate_attributes: List[VdsCalculateSurfaceAttributes],
+        above: int,
+        below: int,
+    ) -> NDArray[np.float32]:
+        """Get calculated attributes along a horizon
+
+        TODO: Decide wether interpolation should be func attribute or class attribute
+        """
+        endpoint = "along"
+
+        # Temporary hard coded fill value for points outside of the seismic cube.
+        # If no fill value is provided in the request is rejected with error if list of coordinates
+        # contain points outside of the seismic cube.
+        hard_coded_fill_value = -999.25
+        hard_coded_step_size = 1
+
+        # surface_values: np.ma =np.ma.masked_array(xtgeo_surface.values).filled(hard_coded_fill_value)
+        surface_values: np.ma = xtgeo_surface.values
+        filled_surface_values: np.ma.MaskedArray = np.ma.filled(surface_values, hard_coded_fill_value)
+        array_shape = filled_surface_values.shape
+        vds_surface = VdsSurface(
+            fill_value=hard_coded_fill_value,
+            rotation=xtgeo_surface.rotation,
+            values=filled_surface_values.tolist(),
+            xinc=xtgeo_surface.xinc,
+            xori=xtgeo_surface.xori,
+            yinc=xtgeo_surface.yinc,
+            yori=xtgeo_surface.yori,
+        )
+
+        calculate_attributes_along_horizon_request = VdsCalculateAttributesAlongHorizonRequest(
+            vds=self.vds_url,
+            sas=self.sas,
+            above=above,
+            attributes=calculate_attributes,
+            below=below,
+            interpolation=self._interpolation,
+            step_size=hard_coded_step_size,
+            surface=vds_surface,
+        )
+
+        response = await self._query_async(endpoint, calculate_attributes_along_horizon_request)
+
+        # TODO: Handle response and flatten data?
+        parts = MultipartDecoder.from_response(response).parts
+        seismic_values = np.ndarray(array_shape, "f4", parts[1].content)
+        seismic_values = np.ma.masked_equal(seismic_values, hard_coded_fill_value)
+
+        # Convert every value of `hard_coded_fill_value` to np.nan
+        seismic_values[seismic_values == hard_coded_fill_value] = np.nan
+
+        return seismic_values
 
     async def get_flattened_fence_traces_array_and_metadata_async(
         self, coordinates: VdsCoordinates, coordinate_system: VdsCoordinateSystem = VdsCoordinateSystem.CDP

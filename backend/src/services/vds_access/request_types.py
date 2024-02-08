@@ -15,6 +15,32 @@ from typing import List
 ######################################################################################################
 
 
+class VdsCalculateSurfaceAttributes(StrEnum):
+    """
+    Attributes to calculate for vds "attribute along surface" and "attribute between surfaces" requests
+
+    Source: https://server-oneseismictest-dev.playground.radix.equinor.com/swagger/index.html#/attributes/post_attributes_surface_along
+    """
+
+    SAMPLE_VALUE = "samplevalue"
+    MIN = "min"
+    MIN_AT = "min_at"
+    MAX = "max"
+    MAX_AT = "max_at"
+    MAXABS = "maxabs"
+    MAXABS_AT = "maxabs_at"
+    MEAN = "mean"
+    MEANABS = "meanabs"
+    MEANPOS = "meanpos"
+    MEANNEG = "meanneg"
+    MEDIAN = "median"
+    RMS = "rms"
+    VAR = "var"
+    SD = "sd"
+    SUMPOS = "sumpos"
+    SUMNEG = "sumneg"
+
+
 class VdsInterpolation(StrEnum):
     """
     Interpolation options for vds fence
@@ -73,6 +99,36 @@ class VdsCoordinates:
 
 
 @dataclass
+class VdsSurface:
+    """
+    A surface in vds-slice
+
+    Source:
+    See attribute `surface` in `AttributeAlongSurfaceRequest` and `AttributeBetweenSurfacesRequest` in
+    `Models` section: https://server-oneseismictest-dev.playground.radix.equinor.com/swagger/index.html#/
+    """
+
+    fill_value: float
+    rotation: float
+    values: List[List[float]]
+    xinc: float
+    xori: float
+    yinc: float
+    yori: float
+
+    def to_dict(self) -> dict:
+        return {
+            "fillValue": self.fill_value,
+            "rotation": self.rotation,
+            "values": self.values,
+            "xinc": self.xinc,
+            "xori": self.xori,
+            "yinc": self.yinc,
+            "yori": self.yori,
+        }
+
+
+@dataclass
 class VdsRequestedResource:
     """
     Definition of requested vds resource for vds-slice
@@ -118,4 +174,32 @@ class VdsFenceRequest(VdsRequestedResource):
             "coordinates": self.coordinates.to_list(),
             "interpolation": self.interpolation.value,
             "fillValue": self.fill_value,
+        }
+
+
+@dataclass
+class VdsCalculateAttributesAlongHorizonRequest(VdsRequestedResource):
+    """
+    Definition of a request for calculating attributes along a horizon in vds-slice
+
+    See:
+    """
+
+    above: float
+    attributes: List[VdsCalculateSurfaceAttributes]
+    below: float
+    interpolation: VdsInterpolation
+    step_size: float
+    surface: VdsSurface
+
+    def request_parameters(self) -> dict:
+        return {
+            "vds": self.vds,
+            "sas": self.sas,
+            "above": self.above,
+            "attributes": [attr.value for attr in self.attributes],  # Set->list to prevent duplicates?
+            "below": self.below,
+            "interpolation": self.interpolation.value,
+            "stepSize": self.step_size,
+            "surface": self.surface.to_dict(),
         }

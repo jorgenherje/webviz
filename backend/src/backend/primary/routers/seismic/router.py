@@ -98,3 +98,17 @@ async def post_get_seismic_fence(
         min_fence_depth=depth_axis_meta.min,
         max_fence_depth=depth_axis_meta.max,
     )
+
+
+@router.post("/get_seismic_calculated_attribute_along_surface/")
+async def post_get_seismic_calculated_attribute_along_surface(
+    authenticated_user: AuthenticatedUser = Depends(AuthHelper.get_authenticated_user),
+    case_uuid: str = Query(description="Sumo case uuid"),
+    ensemble_name: str = Query(description="Ensemble name"),
+    realization_num: int = Query(description="Realization number"),
+    seismic_attribute: str = Query(description="Seismic cube attribute"),
+    time_or_interval_str: str = Query(description="Timestamp or timestep"),
+    observed: bool = Query(description="Observed or simulated"),
+    polyline: schemas.SeismicFencePolyline = Body(embed=True),
+) -> schemas.SeismicFenceData:
+    pass
