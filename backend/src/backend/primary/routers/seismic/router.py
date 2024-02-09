@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 
+from src.services.sumo_access.surface_access import SurfaceAccess
 from src.services.sumo_access.seismic_access import SeismicAccess, VdsHandle
 from src.services.vds_access.vds_access import VdsAccess
 from src.services.utils.authenticated_user import AuthenticatedUser
@@ -106,9 +107,41 @@ async def post_get_seismic_calculated_attribute_along_surface(
     case_uuid: str = Query(description="Sumo case uuid"),
     ensemble_name: str = Query(description="Ensemble name"),
     realization_num: int = Query(description="Realization number"),
-    seismic_attribute: str = Query(description="Seismic cube attribute"),
+    seismic_cube_attribute: str = Query(description="Seismic cube attribute"),
     time_or_interval_str: str = Query(description="Timestamp or timestep"),
     observed: bool = Query(description="Observed or simulated"),
-    polyline: schemas.SeismicFencePolyline = Body(embed=True),
+    seismic_surface_calculation_attribute: str = Query(description="Seismic surface calculation attribute"),
+    above: int = Query(description="Above surface"),
+    below: int = Query(description="Below surface"),
+    surface_name: str = Query(description="Surface name"),
+    surface_attribute: str = Query(description="Surface attribute"),
 ) -> schemas.SeismicFenceData:
-    pass
+    seismic_access = await SeismicAccess.from_case_uuid(
+        authenticated_user.get_sumo_access_token(), case_uuid, ensemble_name
+    )
+
+    vds_handle: Optional[VdsHandle] = None
+    try:
+        vds_handle = await seismic_access.get_vds_handle_async(
+            realization=realization_num,
+            seismic_attribute=seismic_cube_attribute,
+            time_or_interval_str=time_or_interval_str,
+            observed=observed,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=404, detail=str(err)) from err
+
+    vds_access = VdsAccess(sas_token=vds_handle.sas_token, vds_url=vds_handle.vds_url)
+    surface_access = SurfaceAccess(authenticated_user.get_sumo_access_token(), case_uuid, ensemble_name)
+
+    _surface_attribute = "Unknown"
+    xtgeo_surface = await surface_access.get_realization_surface_data_async(
+        real_num=realization_num, surface_name=surface_name, attribute=surface_attribute
+    )
+
+    calculated_attribute_along_surface = await vds_access.get_calculated_attributes_along_horizon_async(
+        xtgeo_surface=xtgeo_surface,
+        calculate_attributes=[seismic_surface_calculation_attribute],
+        above=above,
+        below=below,
+    )
