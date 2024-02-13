@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import json
 
 import numpy as np
@@ -62,10 +62,11 @@ class VdsAccess:
         """Query the service"""
 
         async with httpx.AsyncClient() as client:
+            tmp = request.request_parameters()
             response = await client.post(
                 f"{config.VDS_HOST_ADDRESS}/{endpoint}",
                 headers={"Content-Type": "application/json"},
-                content=json.dumps(request.request_parameters()),
+                content=json.dumps(tmp),
                 timeout=60,
             )
 
@@ -90,30 +91,48 @@ class VdsAccess:
         calculate_attributes: List[VdsCalculateSurfaceAttributes],
         above: int,
         below: int,
-    ) -> NDArray[np.float32]:
+        vertical_seismic_bounds: Optional[Tuple[float, float]] = None,
+    ) -> List[NDArray[np.float32]]:
         """Get calculated attributes along a horizon
 
         TODO: Decide wether interpolation should be func attribute or class attribute
         """
-        endpoint = "along"
 
-        # Temporary hard coded fill value for points outside of the seismic cube.
-        # If no fill value is provided in the request is rejected with error if list of coordinates
-        # contain points outside of the seismic cube.
+        endpoint = "attributes/surface/along"
+
+        # Samples that are out-of-range of the seismic volume in the vertical plane are
+        # considered an error. Set to fill value to avoid error.
         hard_coded_fill_value = -999.25
+
+        hard_coded_bound_margin = 5
+
         hard_coded_step_size = 1
 
+        # Conversions with types?
         # surface_values: np.ma =np.ma.masked_array(xtgeo_surface.values).filled(hard_coded_fill_value)
-        surface_values: np.ma = xtgeo_surface.values
-        filled_surface_values: np.ma.MaskedArray = np.ma.filled(surface_values, hard_coded_fill_value)
+        # surface_values: np.ma = xtgeo_surface.values
+        # filled_surface_values: np.ma.MaskedArray = np.ma.filled(surface_values.copy(), hard_coded_fill_value)
+
+        filled_surface_values = xtgeo_surface.values.filled(hard_coded_fill_value)
+        if vertical_seismic_bounds is not None:
+            filled_surface_values[
+                filled_surface_values < (vertical_seismic_bounds[0] + below + hard_coded_bound_margin)
+            ] = hard_coded_fill_value
+            filled_surface_values[
+                filled_surface_values > (vertical_seismic_bounds[1] - above - hard_coded_bound_margin)
+            ] = hard_coded_fill_value
+
+            # filled_surface_values[filled_surface_values < (vertical_seismic_bounds[0])] = hard_coded_fill_value
+            # filled_surface_values[filled_surface_values > (vertical_seismic_bounds[1])] = hard_coded_fill_value
+
         array_shape = filled_surface_values.shape
         vds_surface = VdsSurface(
             fill_value=hard_coded_fill_value,
             rotation=xtgeo_surface.rotation,
             values=filled_surface_values.tolist(),
             xinc=xtgeo_surface.xinc,
-            xori=xtgeo_surface.xori,
             yinc=xtgeo_surface.yinc,
+            xori=xtgeo_surface.xori,
             yori=xtgeo_surface.yori,
         )
 
@@ -130,13 +149,28 @@ class VdsAccess:
 
         response = await self._query_async(endpoint, calculate_attributes_along_horizon_request)
 
+        # Use MultipartDecoder with httpx's Response content and headers
+        decoder = MultipartDecoder(content=response.content, content_type=response.headers["Content-Type"])
+        parts = decoder.parts
+
+        # Part 0: metadata
+        # metadata = VdsAttributeAlongMetadata(**json.loads(parts[0].content))
+
+        # Part 1 ... n-1: attribute values
+        calculated_attribute_surfaces: List[NDArray[np.float32]] = []
+        for part in parts[1:]:
+            calculated_attribute_surface = np.ndarray(array_shape, "f4", part.content)
+            calculated_attribute_surface = np.ma.masked_equal(calculated_attribute_surface, hard_coded_fill_value)
+            calculated_attribute_surfaces.append(calculated_attribute_surface)
+
         # TODO: Handle response and flatten data?
         parts = MultipartDecoder.from_response(response).parts
+
         seismic_values = np.ndarray(array_shape, "f4", parts[1].content)
         seismic_values = np.ma.masked_equal(seismic_values, hard_coded_fill_value)
 
         # Convert every value of `hard_coded_fill_value` to np.nan
-        seismic_values[seismic_values == hard_coded_fill_value] = np.nan
+        # seismic_values[seismic_values == hard_coded_fill_value] = np.nan
 
         return seismic_values
 
