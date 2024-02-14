@@ -59,3 +59,9 @@ class SeismicFenceData(BaseModel):
     num_samples_per_trace: int
     min_fence_depth: float
     max_fence_depth: float
+
+
+class SeismicCalculatedAttributeAlongSurfaceData(BaseModel):
+    calculated_attribute_along_surface_b64arr: B64FloatArray
+    num_x_samples: int
+    num_y_samples: int

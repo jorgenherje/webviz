@@ -11,7 +11,7 @@ from src import config
 
 import xtgeo
 
-from .response_types import VdsMetadata, VdsFenceMetadata
+from .response_types import VdsAttributeMetadata, VdsFenceMetadata, VdsMetadata
 from .request_types import (
     VdsCalculateSurfaceAttributes,
     VdsCoordinates,
@@ -85,35 +85,49 @@ class VdsAccess:
         metadata = response.json()
         return VdsMetadata(**metadata)
 
-    async def get_calculated_attributes_along_horizon_async(
+    async def get_calculated_attributes_along_surface_async(
         self,
         xtgeo_surface: xtgeo.RegularSurface,
         calculate_attributes: List[VdsCalculateSurfaceAttributes],
         above: int,
         below: int,
         vertical_seismic_bounds: Optional[Tuple[float, float]] = None,
-    ) -> List[NDArray[np.float32]]:
+    ) -> Tuple[List[NDArray[np.float32]], int, int]:
         """Get calculated attributes along a horizon
 
-        TODO: Decide wether interpolation should be func attribute or class attribute
+        Provided surface values are ensured to be within the vertical seismic bounds of the seismic cube. If the surface depth values including
+        above/below are outside the seismic cube, the values are set to the fill value.
+
+        `vds-slice`: As samples that are out-of-range of the seismic volume in the vertical plane are considered an error. Samples that are out-of-range
+        of the seismic volume in the horizontal plane will be set to fillValue in the resulting attribute(s).
+
+        NOTE: The filled values handles vertical bound, including above and below, and a minimum of 2 sample steps (due to interpolation)
+
+        `Returns:`
+        `Tuple[flattened_calculated_attribute_surface_float32_arrays: List[NDArray[np.float32]], num_x_samples: int, num_y_samples: int]`
+
+        `flattened_calculated_attribute_surface_float32_arrays`: List of 1D np.ndarray with dtype=float32, row by row. Where row is x-direction (?). One 1D np.ndarray per requested attribute`.\n
+        `num_x_samples`: Number of surface values in local x-direction.\n
+        `num_y_samples`: Number of surface values in local y-direction.\n
+
+        NOTE: Improve name of num_local_x and num_local_y?
         """
 
         endpoint = "attributes/surface/along"
+
+        # Expect xtgeo_surface.values to defined
+        if not np.ma.isMaskedArray(xtgeo_surface.values):
+            raise ValueError("Surface values are not a masked array.")
 
         # Samples that are out-of-range of the seismic volume in the vertical plane are
         # considered an error. Set to fill value to avoid error.
         hard_coded_fill_value = -999.25
 
-        hard_coded_bound_margin = 5
+        hard_coded_bound_margin = 5  # 2*survey.sample_step (due to vds-slice interpolation algorithm)
 
         hard_coded_step_size = 1
 
-        # Conversions with types?
-        # surface_values: np.ma =np.ma.masked_array(xtgeo_surface.values).filled(hard_coded_fill_value)
-        # surface_values: np.ma = xtgeo_surface.values
-        # filled_surface_values: np.ma.MaskedArray = np.ma.filled(surface_values.copy(), hard_coded_fill_value)
-
-        filled_surface_values = xtgeo_surface.values.filled(hard_coded_fill_value)
+        filled_surface_values: np.ma.MaskedArray = np.ma.filled(xtgeo_surface.values, hard_coded_fill_value)
         if vertical_seismic_bounds is not None:
             filled_surface_values[
                 filled_surface_values < (vertical_seismic_bounds[0] + below + hard_coded_bound_margin)
@@ -122,10 +136,6 @@ class VdsAccess:
                 filled_surface_values > (vertical_seismic_bounds[1] - above - hard_coded_bound_margin)
             ] = hard_coded_fill_value
 
-            # filled_surface_values[filled_surface_values < (vertical_seismic_bounds[0])] = hard_coded_fill_value
-            # filled_surface_values[filled_surface_values > (vertical_seismic_bounds[1])] = hard_coded_fill_value
-
-        array_shape = filled_surface_values.shape
         vds_surface = VdsSurface(
             fill_value=hard_coded_fill_value,
             rotation=xtgeo_surface.rotation,
@@ -154,25 +164,35 @@ class VdsAccess:
         parts = decoder.parts
 
         # Part 0: metadata
-        # metadata = VdsAttributeAlongMetadata(**json.loads(parts[0].content))
+        metadata = VdsAttributeMetadata(**json.loads(parts[0].content))
+        num_x_samples = metadata.shape[0]  # TODO: Improve name?
+        num_y_samples = metadata.shape[1]  # TODO: Improve name?
+
+        if metadata.format != "<f4":
+            raise ValueError(f"Expected float32, got {metadata.format}")
+        if len(metadata.shape) != 2:
+            raise ValueError(f"Expected shape to be 2D, got {metadata.shape}")
 
         # Part 1 ... n-1: attribute values
-        calculated_attribute_surfaces: List[NDArray[np.float32]] = []
+        flattened_calculated_attribute_surface_float32_arrays: List[NDArray[np.float32]] = []
         for part in parts[1:]:
-            calculated_attribute_surface = np.ndarray(array_shape, "f4", part.content)
-            calculated_attribute_surface = np.ma.masked_equal(calculated_attribute_surface, hard_coded_fill_value)
-            calculated_attribute_surfaces.append(calculated_attribute_surface)
+            byte_array = part.content
 
-        # TODO: Handle response and flatten data?
-        parts = MultipartDecoder.from_response(response).parts
+            # Flattened array with row major order, i.e. C-order in numpy
+            flattened_calculated_attribute_surface_float32_array = bytes_to_flatten_ndarray_float32(
+                byte_array, shape=metadata.shape
+            )
 
-        seismic_values = np.ndarray(array_shape, "f4", parts[1].content)
-        seismic_values = np.ma.masked_equal(seismic_values, hard_coded_fill_value)
+            # Convert every value of `hard_coded_fill_value` to np.nan
+            flattened_calculated_attribute_surface_float32_array[
+                flattened_calculated_attribute_surface_float32_array == hard_coded_fill_value
+            ] = np.nan
 
-        # Convert every value of `hard_coded_fill_value` to np.nan
-        # seismic_values[seismic_values == hard_coded_fill_value] = np.nan
+            flattened_calculated_attribute_surface_float32_arrays.append(
+                flattened_calculated_attribute_surface_float32_array
+            )
 
-        return seismic_values
+        return (flattened_calculated_attribute_surface_float32_arrays, num_x_samples, num_y_samples)
 
     async def get_flattened_fence_traces_array_and_metadata_async(
         self, coordinates: VdsCoordinates, coordinate_system: VdsCoordinateSystem = VdsCoordinateSystem.CDP

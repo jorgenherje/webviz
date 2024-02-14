@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 
@@ -139,9 +139,28 @@ async def post_get_seismic_calculated_attribute_along_surface(
         real_num=realization_num, surface_name=surface_name, attribute=surface_attribute
     )
 
-    calculated_attribute_along_surface = await vds_access.get_calculated_attributes_along_horizon_async(
-        xtgeo_surface=xtgeo_surface,
-        calculate_attributes=[seismic_surface_calculation_attribute],
-        above=above,
-        below=below,
+    # Retrieve sample/depth bounds for seismic cube
+    seismic_metadata = await vds_access.get_metadata_async()
+    vertical_seismic_bounds: Optional[Tuple[float, float]] = None
+    for axis in seismic_metadata.axis:
+        if axis.annotation == "Sample":
+            vertical_seismic_bounds = (axis.min, axis.max)
+            break
+
+    [flattened_calculated_attribute_surface_float32_arrays, num_x_samples, num_y_samples] = (
+        await vds_access.get_calculated_attributes_along_surface_async(
+            xtgeo_surface=xtgeo_surface,
+            calculate_attributes=[seismic_surface_calculation_attribute],
+            above=above,
+            below=below,
+            vertical_seismic_bounds=vertical_seismic_bounds,
+        )
+    )
+
+    return schemas.SeismicCalculatedAttributeAlongSurfaceData(
+        calculated_attribute_along_surface_b64arr=b64_encode_float_array_as_float32(
+            flattened_calculated_attribute_surface_float32_arrays[0]
+        ),
+        num_x_samples=num_x_samples,
+        num_y_samples=num_y_samples,
     )

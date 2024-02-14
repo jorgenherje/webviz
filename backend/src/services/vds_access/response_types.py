@@ -34,6 +34,15 @@ class VdsArray:
 
 
 @dataclass
+class VdsAttributeMetadata(VdsArray):
+    """
+    Definition of an attribute metadata response from vds-slice
+
+    See:https://github.com/equinor/vds-slice/blob/ab6f39789bf3d3b59a8df14f1c4682d340dc0bf3/internal/core/core.go#L165-L167
+    """
+
+
+@dataclass
 class VdsFenceMetadata(VdsArray):
     """
     Definition of a fence metadata response from vds-slice
