@@ -80,7 +80,7 @@ export class SeismicService {
         });
     }
     /**
-     * Post Get Seismic Calculated Attribute Along Surface
+     * Get Seismic Calculated Attribute Along Surface
      * @param caseUuid Sumo case uuid
      * @param ensembleName Ensemble name
      * @param realizationNum Realization number
@@ -95,7 +95,7 @@ export class SeismicService {
      * @returns SeismicFenceData Successful Response
      * @throws ApiError
      */
-    public postGetSeismicCalculatedAttributeAlongSurface(
+    public getSeismicCalculatedAttributeAlongSurface(
         caseUuid: string,
         ensembleName: string,
         realizationNum: number,
@@ -109,7 +109,7 @@ export class SeismicService {
         surfaceAttribute: string,
     ): CancelablePromise<SeismicFenceData> {
         return this.httpRequest.request({
-            method: 'POST',
+            method: 'GET',
             url: '/seismic/get_seismic_calculated_attribute_along_surface/',
             query: {
                 'case_uuid': caseUuid,

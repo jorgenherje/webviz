@@ -10,7 +10,7 @@ from src.services.utils.authenticated_user import AuthenticatedUser
 from src.backend.auth.auth_helper import AuthHelper
 from src.services.utils.b64 import b64_encode_float_array_as_float32
 from src.services.vds_access.response_types import VdsMetadata
-from src.services.vds_access.request_types import VdsCoordinateSystem, VdsCoordinates
+from src.services.vds_access.request_types import VdsCoordinateSystem, VdsCoordinates, VdsCalculateSurfaceAttributes
 
 from . import schemas
 
@@ -101,8 +101,8 @@ async def post_get_seismic_fence(
     )
 
 
-@router.post("/get_seismic_calculated_attribute_along_surface/")
-async def post_get_seismic_calculated_attribute_along_surface(
+@router.get("/get_seismic_calculated_attribute_along_surface/")
+async def get_seismic_calculated_attribute_along_surface(
     authenticated_user: AuthenticatedUser = Depends(AuthHelper.get_authenticated_user),
     case_uuid: str = Query(description="Sumo case uuid"),
     ensemble_name: str = Query(description="Ensemble name"),
@@ -147,10 +147,18 @@ async def post_get_seismic_calculated_attribute_along_surface(
             vertical_seismic_bounds = (axis.min, axis.max)
             break
 
+    seismic_surface_calculation_attribute_enum = None
+    try:
+        seismic_surface_calculation_attribute_enum = VdsCalculateSurfaceAttributes(
+            seismic_surface_calculation_attribute
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
+
     [flattened_calculated_attribute_surface_float32_arrays, num_x_samples, num_y_samples] = (
         await vds_access.get_calculated_attributes_along_surface_async(
             xtgeo_surface=xtgeo_surface,
-            calculate_attributes=[seismic_surface_calculation_attribute],
+            calculate_attributes=[seismic_surface_calculation_attribute_enum],
             above=above,
             below=below,
             vertical_seismic_bounds=vertical_seismic_bounds,
