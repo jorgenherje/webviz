@@ -79,4 +79,54 @@ export class SeismicService {
             },
         });
     }
+    /**
+     * Post Get Seismic Calculated Attribute Along Surface
+     * @param caseUuid Sumo case uuid
+     * @param ensembleName Ensemble name
+     * @param realizationNum Realization number
+     * @param seismicCubeAttribute Seismic cube attribute
+     * @param timeOrIntervalStr Timestamp or timestep
+     * @param observed Observed or simulated
+     * @param seismicSurfaceCalculationAttribute Seismic surface calculation attribute
+     * @param above Above surface
+     * @param below Below surface
+     * @param surfaceName Surface name
+     * @param surfaceAttribute Surface attribute
+     * @returns SeismicFenceData Successful Response
+     * @throws ApiError
+     */
+    public postGetSeismicCalculatedAttributeAlongSurface(
+        caseUuid: string,
+        ensembleName: string,
+        realizationNum: number,
+        seismicCubeAttribute: string,
+        timeOrIntervalStr: string,
+        observed: boolean,
+        seismicSurfaceCalculationAttribute: string,
+        above: number,
+        below: number,
+        surfaceName: string,
+        surfaceAttribute: string,
+    ): CancelablePromise<SeismicFenceData> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/seismic/get_seismic_calculated_attribute_along_surface/',
+            query: {
+                'case_uuid': caseUuid,
+                'ensemble_name': ensembleName,
+                'realization_num': realizationNum,
+                'seismic_cube_attribute': seismicCubeAttribute,
+                'time_or_interval_str': timeOrIntervalStr,
+                'observed': observed,
+                'seismic_surface_calculation_attribute': seismicSurfaceCalculationAttribute,
+                'above': above,
+                'below': below,
+                'surface_name': surfaceName,
+                'surface_attribute': surfaceAttribute,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
 }
