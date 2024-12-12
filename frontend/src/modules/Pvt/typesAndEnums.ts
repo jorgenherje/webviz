@@ -1,5 +1,4 @@
 import { ApiError, PvtData_api } from "@api";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 
 export enum ColorBy {
     ENSEMBLE = "ensemble",
@@ -38,7 +37,7 @@ export type Phase = {
 };
 
 export type PvtTableCollection = {
-    ensembleIdent: RegularEnsembleIdent;
+    ensembleIdent: string;
     realization: number;
     tables: PvtData_api[];
 };

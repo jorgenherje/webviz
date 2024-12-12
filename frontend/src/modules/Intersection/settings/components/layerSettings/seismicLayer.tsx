@@ -1,8 +1,8 @@
 import React from "react";
 
 import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
@@ -158,7 +158,7 @@ export function SeismicLayerSettingsComponent(props: SeismicLayerSettingsProps):
         [seismicCubeMetaListQuery.isFetching, props.layer, newSettings]
     );
 
-    function handleEnsembleChange(ensembleIdent: RegularEnsembleIdent | null) {
+    function handleEnsembleChange(ensembleIdent: string | null) {
         setNewSettings((prev) => ({ ...prev, ensembleIdent }));
     }
 
@@ -341,16 +341,18 @@ function makeDateOrIntervalStringOptions(availableSeismicDateOrIntervalStrings: 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
-function useSeismicCubeMetaListQuery(ensembleIdent: RegularEnsembleIdent | null) {
+function useSeismicCubeMetaListQuery(ensembleIdent: string | null) {
+    let caseUuid: string | null = null;
+    let ensembleName: string | null = null;
+    if (ensembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(ensembleIdent));
+    }
+
     return useQuery({
-        queryKey: ["getSeismicCubeMetaList", ensembleIdent?.getCaseUuid(), ensembleIdent?.getEnsembleName()],
-        queryFn: () =>
-            apiService.seismic.getSeismicCubeMetaList(
-                ensembleIdent?.getCaseUuid() ?? "",
-                ensembleIdent?.getEnsembleName() ?? ""
-            ),
+        queryKey: ["getSeismicCubeMetaList", caseUuid, ensembleName],
+        queryFn: () => apiService.seismic.getSeismicCubeMetaList(caseUuid ?? "", ensembleName ?? ""),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
-        enabled: Boolean(ensembleIdent),
+        enabled: !!(caseUuid && ensembleName),
     });
 }

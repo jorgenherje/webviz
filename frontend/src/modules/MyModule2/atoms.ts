@@ -1,20 +1,26 @@
 import { apiService } from "@framework/ApiService";
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 
 import { atom } from "jotai";
 import { atomWithQuery } from "jotai-tanstack-query";
 
 export const textAtom = atom<string>("I am an atom with text!");
-export const selectedEnsembleAtom = atom<RegularEnsembleIdent | null>(null);
-export const vectorsAtom = atomWithQuery((get) => ({
-    queryKey: ["ensembles", get(selectedEnsembleAtom)?.toString()],
-    queryFn: () =>
-        apiService.timeseries.getVectorList(
-            get(selectedEnsembleAtom)?.getCaseUuid() ?? "",
-            get(selectedEnsembleAtom)?.getEnsembleName() ?? ""
-        ),
-}));
+export const selectedEnsembleIdentAtom = atom<string | null>(null);
+export const vectorsAtom = atomWithQuery((get) => {
+    const ensembleSet = get(EnsembleSetAtom);
+    const selectedEnsembleIdent = get(selectedEnsembleIdentAtom);
+
+    const selectedEnsemble = selectedEnsembleIdent
+        ? ensembleSet.findRegularEnsemble(selectedEnsembleIdent) ?? null
+        : null;
+    const caseUuid = selectedEnsemble?.getCaseUuid();
+    const ensembleName = selectedEnsemble?.getEnsembleName();
+
+    return {
+        queryKey: ["ensembles", get(selectedEnsembleIdentAtom)?.toString()],
+        queryFn: () => apiService.timeseries.getVectorList(caseUuid ?? "", ensembleName ?? ""),
+    };
+});
 export const atomBasedOnVectors = atom<boolean>((get) => get(vectorsAtom).isFetching);
 export const userSelectedVectorAtom = atom<string | null>(null);
 export const selectedVectorAtom = atom<string | null>((get) => {
@@ -28,10 +34,4 @@ export const selectedVectorAtom = atom<string | null>((get) => {
     }
 
     return vectors.data?.at(0)?.name ?? null;
-});
-
-export const ensembleSetDependentAtom = atom<RegularEnsembleIdent | null>((get) => {
-    const ensembleSet = get(EnsembleSetAtom);
-    const firstEnsemble = ensembleSet.getRegularEnsembleArray()[0];
-    return firstEnsemble?.getIdent() ?? null;
 });

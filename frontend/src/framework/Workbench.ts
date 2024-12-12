@@ -6,7 +6,6 @@ import { InitialSettings } from "./InitialSettings";
 import { ImportState } from "./Module";
 import { ModuleInstance } from "./ModuleInstance";
 import { ModuleRegistry } from "./ModuleRegistry";
-import { RegularEnsembleIdent } from "./RegularEnsembleIdent";
 import { Template } from "./TemplateRegistry";
 import { WorkbenchServices } from "./WorkbenchServices";
 import { loadMetadataFromBackendAndCreateEnsembleSet } from "./internal/EnsembleSetLoader";
@@ -28,25 +27,12 @@ export type LayoutElement = {
 };
 
 export type UserEnsembleSetting = {
-    ensembleIdent: RegularEnsembleIdent;
-    customName: string | null;
-    color: string;
-};
-
-export type UserDeltaEnsembleSetting = {
-    compareEnsembleIdent: RegularEnsembleIdent;
-    referenceEnsembleIdent: RegularEnsembleIdent;
-    customName: string | null;
-    color: string;
-};
-
-export type StoredUserEnsembleSetting = {
     ensembleIdent: string;
     customName: string | null;
     color: string;
 };
 
-export type StoredUserDeltaEnsembleSetting = {
+export type UserDeltaEnsembleSetting = {
     compareEnsembleIdent: string;
     referenceEnsembleIdent: string;
     customName: string | null;
@@ -262,47 +248,27 @@ export class Workbench {
     }
 
     private storeEnsembleSetInLocalStorage(ensemblesToStore: UserEnsembleSetting[]): void {
-        const ensembleIdentsToStore: StoredUserEnsembleSetting[] = ensemblesToStore.map((el) => ({
-            ...el,
-            ensembleIdent: el.ensembleIdent.toString(),
-        }));
-        localStorage.setItem("userEnsembleSettings", JSON.stringify(ensembleIdentsToStore));
+        localStorage.setItem("userEnsembleSettings", JSON.stringify(ensemblesToStore));
     }
 
-    private storeDeltaEnsembleSetInLocalStorage(ensemblesToStore: UserDeltaEnsembleSetting[]): void {
-        const deltaEnsembleIdentsToStore: StoredUserDeltaEnsembleSetting[] = ensemblesToStore.map((el) => ({
-            ...el,
-            compareEnsembleIdent: el.compareEnsembleIdent.toString(),
-            referenceEnsembleIdent: el.referenceEnsembleIdent.toString(),
-        }));
-        localStorage.setItem("userDeltaEnsembleSettings", JSON.stringify(deltaEnsembleIdentsToStore));
+    private storeDeltaEnsembleSetInLocalStorage(deltaEnsemblesToStore: UserDeltaEnsembleSetting[]): void {
+        localStorage.setItem("userDeltaEnsembleSettings", JSON.stringify(deltaEnsemblesToStore));
     }
 
     maybeLoadEnsembleSettingsFromLocalStorage(): UserEnsembleSetting[] | null {
         const ensembleSettingsString = localStorage.getItem("userEnsembleSettings");
         if (!ensembleSettingsString) return null;
 
-        const ensembleIdents = JSON.parse(ensembleSettingsString) as StoredUserEnsembleSetting[];
-        const ensembleIdentsParsed: UserEnsembleSetting[] = ensembleIdents.map((el) => ({
-            ...el,
-            ensembleIdent: RegularEnsembleIdent.fromString(el.ensembleIdent),
-        }));
-
-        return ensembleIdentsParsed;
+        const ensembleSettings = JSON.parse(ensembleSettingsString) as UserEnsembleSetting[];
+        return ensembleSettings;
     }
 
     maybeLoadDeltaEnsembleSettingsFromLocalStorage(): UserDeltaEnsembleSetting[] | null {
         const deltaEnsembleSettingsString = localStorage.getItem("userDeltaEnsembleSettings");
         if (!deltaEnsembleSettingsString) return null;
 
-        const deltaEnsembleIdents = JSON.parse(deltaEnsembleSettingsString) as StoredUserDeltaEnsembleSetting[];
-        const deltaEnsembleIdentsParsed: UserDeltaEnsembleSetting[] = deltaEnsembleIdents.map((el) => ({
-            ...el,
-            compareEnsembleIdent: RegularEnsembleIdent.fromString(el.compareEnsembleIdent),
-            referenceEnsembleIdent: RegularEnsembleIdent.fromString(el.referenceEnsembleIdent),
-        }));
-
-        return deltaEnsembleIdentsParsed;
+        const deltaEnsembleSettings = JSON.parse(deltaEnsembleSettingsString) as UserDeltaEnsembleSetting[];
+        return deltaEnsembleSettings;
     }
 
     applyTemplate(template: Template): void {

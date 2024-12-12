@@ -1,9 +1,13 @@
+import { EnsembleIdent } from "./EnsembleIdent";
 import { EnsembleParameters, Parameter } from "./EnsembleParameters";
 import { EnsembleSensitivities, Sensitivity } from "./EnsembleSensitivities";
-import { RegularEnsembleIdent } from "./RegularEnsembleIdent";
 
 export class RegularEnsemble {
-    private _ensembleIdent: RegularEnsembleIdent;
+    // TODO: Should this go by: EnsembleIdent.regularEnsembleCaseUuidAndNameFromString?
+    private _ensembleName: string;
+    private _caseUuid: string;
+
+    private _ensembleIdentString: string;
     private _fieldIdentifier: string;
     private _caseName: string;
     private _stratigraphicColumnIdentifier: string;
@@ -25,7 +29,9 @@ export class RegularEnsemble {
         color: string,
         customName: string | null = null
     ) {
-        this._ensembleIdent = new RegularEnsembleIdent(caseUuid, ensembleName);
+        this._ensembleName = ensembleName;
+        this._caseUuid = caseUuid;
+        this._ensembleIdentString = EnsembleIdent.createRegularEnsembleIdentString(caseUuid, ensembleName);
         this._fieldIdentifier = fieldIdentifier;
         this._caseName = caseName;
         this._stratigraphicColumnIdentifier = stratigraphicColumnIdentifier;
@@ -40,8 +46,8 @@ export class RegularEnsemble {
         }
     }
 
-    getIdent(): RegularEnsembleIdent {
-        return this._ensembleIdent;
+    getIdent(): string {
+        return this._ensembleIdentString;
     }
 
     getFieldIdentifier(): string {
@@ -56,15 +62,15 @@ export class RegularEnsemble {
         if (this._customName) {
             return this._customName;
         }
-        return `${this._ensembleIdent.getEnsembleName()} (${this._caseName})`;
+        return `${this._ensembleName} (${this._caseName})`;
     }
 
     getCaseUuid(): string {
-        return this._ensembleIdent.getCaseUuid();
+        return this._caseUuid;
     }
 
     getEnsembleName(): string {
-        return this._ensembleIdent.getEnsembleName();
+        return this._ensembleName;
     }
 
     getCaseName(): string {

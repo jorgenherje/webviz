@@ -2,8 +2,8 @@ import React from "react";
 
 import { Grid3dInfo_api } from "@api";
 import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
@@ -115,7 +115,7 @@ export function GridLayerSettingsComponent(props: GridLayerSettingsComponentProp
         [gridModelInfosQuery.isFetching, props.layer, newSettings]
     );
 
-    function handleEnsembleChange(ensembleIdent: RegularEnsembleIdent | null) {
+    function handleEnsembleChange(ensembleIdent: string | null) {
         setNewSettings((prev) => ({ ...prev, ensembleIdent }));
     }
 
@@ -307,15 +307,16 @@ function makeGridParameterDateOrIntervalOptions(datesOrIntervals: (string | null
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
-function useGridModelInfosQuery(ensembleIdent: RegularEnsembleIdent | null, realizationNum: number | null) {
+function useGridModelInfosQuery(ensembleIdent: string | null, realizationNum: number | null) {
+    let caseUuid = "";
+    let ensembleName = "";
+    if (ensembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(ensembleIdent));
+    }
+
     return useQuery({
-        queryKey: ["getGridModelInfos", ensembleIdent?.getCaseUuid(), ensembleIdent?.getEnsembleName(), realizationNum],
-        queryFn: () =>
-            apiService.grid3D.getGridModelsInfo(
-                ensembleIdent?.getCaseUuid() ?? "",
-                ensembleIdent?.getEnsembleName() ?? "",
-                realizationNum ?? 0
-            ),
+        queryKey: ["getGridModelInfos", caseUuid, ensembleName, realizationNum],
+        queryFn: () => apiService.grid3D.getGridModelsInfo(caseUuid, ensembleName, realizationNum ?? 0),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
         enabled: Boolean(ensembleIdent && realizationNum !== null),

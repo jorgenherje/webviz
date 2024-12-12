@@ -1,6 +1,7 @@
 import { EnsembleDetails_api, EnsembleParameter_api, EnsembleSensitivity_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { DeltaEnsemble } from "@framework/DeltaEnsemble";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { UserDeltaEnsembleSetting, UserEnsembleSetting } from "@framework/Workbench";
 import { QueryClient } from "@tanstack/react-query";
 
@@ -8,15 +9,14 @@ import { ContinuousParameter, DiscreteParameter, Parameter, ParameterType } from
 import { Sensitivity, SensitivityCase } from "../EnsembleSensitivities";
 import { EnsembleSet } from "../EnsembleSet";
 import { RegularEnsemble } from "../RegularEnsemble";
-import { RegularEnsembleIdent } from "../RegularEnsembleIdent";
 
 type EnsembleApiData = {
     ensembleDetails: EnsembleDetails_api;
     parameters: EnsembleParameter_api[];
     sensitivities: EnsembleSensitivity_api[];
 };
-type EnsembleIdentStringToApiDataMap = {
-    [ensembleIdentString: string]: EnsembleApiData;
+type EnsembleIdentToApiDataMap = {
+    [ensembleIdent: string]: EnsembleApiData;
 };
 
 export async function loadMetadataFromBackendAndCreateEnsembleSet(
@@ -25,29 +25,29 @@ export async function loadMetadataFromBackendAndCreateEnsembleSet(
     userDeltaEnsembleSettings: UserDeltaEnsembleSetting[]
 ): Promise<EnsembleSet> {
     // Get ensemble idents to load
-    const ensembleIdentsToLoad: RegularEnsembleIdent[] = userEnsembleSettings.map((setting) => setting.ensembleIdent);
+    const ensembleIdentStringsToLoad: string[] = userEnsembleSettings.map((setting) => setting.ensembleIdent);
     for (const deltaEnsembleSetting of userDeltaEnsembleSettings) {
-        if (!ensembleIdentsToLoad.includes(deltaEnsembleSetting.compareEnsembleIdent)) {
-            ensembleIdentsToLoad.push(deltaEnsembleSetting.compareEnsembleIdent);
+        if (!ensembleIdentStringsToLoad.includes(deltaEnsembleSetting.compareEnsembleIdent)) {
+            ensembleIdentStringsToLoad.push(deltaEnsembleSetting.compareEnsembleIdent);
         }
-        if (!ensembleIdentsToLoad.includes(deltaEnsembleSetting.referenceEnsembleIdent)) {
-            ensembleIdentsToLoad.push(deltaEnsembleSetting.referenceEnsembleIdent);
+        if (!ensembleIdentStringsToLoad.includes(deltaEnsembleSetting.referenceEnsembleIdent)) {
+            ensembleIdentStringsToLoad.push(deltaEnsembleSetting.referenceEnsembleIdent);
         }
     }
 
     // Fetch from back-end
     const ensembleIdentStringToApiDataMap = await loadEnsembleIdentStringToApiDataMapFromBackend(
         queryClient,
-        ensembleIdentsToLoad
+        ensembleIdentStringsToLoad
     );
 
     // Create regular ensembles
     const outEnsembleArray: RegularEnsemble[] = [];
     for (const ensembleSetting of userEnsembleSettings) {
-        const ensembleIdentString = ensembleSetting.ensembleIdent.toString();
-        const ensembleApiData = ensembleIdentStringToApiDataMap[ensembleIdentString];
+        const ensembleIdent = ensembleSetting.ensembleIdent;
+        const ensembleApiData = ensembleIdentStringToApiDataMap[ensembleIdent];
         if (!ensembleApiData) {
-            console.error("Error fetching ensemble data, dropping ensemble:", ensembleSetting.ensembleIdent.toString());
+            console.error("Error fetching ensemble data, dropping ensemble:", ensembleIdent);
             continue;
         }
 
@@ -76,8 +76,8 @@ export async function loadMetadataFromBackendAndCreateEnsembleSet(
     const nullSensitiveArray = null;
     const emptyColor = "";
     for (const deltaEnsembleSetting of userDeltaEnsembleSettings) {
-        const compareEnsembleIdentString = deltaEnsembleSetting.compareEnsembleIdent.toString();
-        const referenceEnsembleIdentString = deltaEnsembleSetting.referenceEnsembleIdent.toString();
+        const compareEnsembleIdentString = deltaEnsembleSetting.compareEnsembleIdent;
+        const referenceEnsembleIdentString = deltaEnsembleSetting.referenceEnsembleIdent;
 
         const compareEnsembleApiData = ensembleIdentStringToApiDataMap[compareEnsembleIdentString];
         const referenceEnsembleApiData = ensembleIdentStringToApiDataMap[referenceEnsembleIdentString];
@@ -90,11 +90,9 @@ export async function loadMetadataFromBackendAndCreateEnsembleSet(
         }
 
         const compareEnsembleCustomName =
-            userEnsembleSettings.find((elm) => elm.ensembleIdent.toString() === compareEnsembleIdentString)
-                ?.customName ?? null;
+            userEnsembleSettings.find((elm) => elm.ensembleIdent === compareEnsembleIdentString)?.customName ?? null;
         const referenceEnsembleCustomName =
-            userEnsembleSettings.find((elm) => elm.ensembleIdent.toString() === referenceEnsembleIdentString)
-                ?.customName ?? null;
+            userEnsembleSettings.find((elm) => elm.ensembleIdent === referenceEnsembleIdentString)?.customName ?? null;
 
         const compareEnsemble = new RegularEnsemble(
             compareEnsembleApiData.ensembleDetails.field_identifier,
@@ -137,8 +135,8 @@ export async function loadMetadataFromBackendAndCreateEnsembleSet(
 
 async function loadEnsembleIdentStringToApiDataMapFromBackend(
     queryClient: QueryClient,
-    ensembleIdents: RegularEnsembleIdent[]
-): Promise<EnsembleIdentStringToApiDataMap> {
+    ensembleIdents: string[]
+): Promise<EnsembleIdentToApiDataMap> {
     console.debug("loadEnsembleIdentStringToApiDataMapFromBackend", ensembleIdents);
 
     const STALE_TIME = 5 * 60 * 1000;
@@ -149,8 +147,7 @@ async function loadEnsembleIdentStringToApiDataMapFromBackend(
     const sensitivitiesPromiseArray: Promise<EnsembleSensitivity_api[]>[] = [];
 
     for (const ensembleIdent of ensembleIdents) {
-        const caseUuid = ensembleIdent.getCaseUuid();
-        const ensembleName = ensembleIdent.getEnsembleName();
+        const { caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(ensembleIdent);
 
         const ensembleDetailsPromise = queryClient.fetchQuery({
             queryKey: ["getEnsembleDetails", caseUuid, ensembleName],
@@ -182,21 +179,19 @@ async function loadEnsembleIdentStringToApiDataMapFromBackend(
     const parametersOutcomeArray = await Promise.allSettled(parametersPromiseArray);
     const sensitivitiesOutcomeArray = await Promise.allSettled(sensitivitiesPromiseArray);
 
-    const resMap: EnsembleIdentStringToApiDataMap = {};
+    const resMap: EnsembleIdentToApiDataMap = {};
     for (let i = 0; i < ensembleDetailsOutcomeArray.length; i++) {
         const ensembleDetailsOutcome = ensembleDetailsOutcomeArray[i];
         console.debug(`ensembleDetailsOutcome[${i}]:`, ensembleDetailsOutcome.status);
         if (ensembleDetailsOutcome.status === "rejected") {
-            console.error("Error fetching ensemble details, dropping ensemble:", ensembleIdents[i].toString());
+            console.error("Error fetching ensemble details, dropping ensemble:", ensembleIdents[i]);
             continue;
         }
 
         const ensembleDetails: EnsembleDetails_api = ensembleDetailsOutcome.value;
-        if (
-            ensembleDetails.case_uuid !== ensembleIdents[i].getCaseUuid() ||
-            ensembleDetails.name !== ensembleIdents[i].getEnsembleName()
-        ) {
-            console.error("Got mismatched data from backend, dropping ensemble:", ensembleIdents[i].toString());
+        const { caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(ensembleIdents[i]);
+        if (ensembleDetails.case_uuid !== caseUuid || ensembleDetails.name !== ensembleName) {
+            console.error("Got mismatched data from backend, dropping ensemble:", ensembleIdents[i]);
             continue;
         }
 
@@ -214,7 +209,7 @@ async function loadEnsembleIdentStringToApiDataMapFromBackend(
             sensitivityArray = sensitivitiesOutcome.value;
         }
 
-        resMap[ensembleIdents[i].toString()] = {
+        resMap[ensembleIdents[i]] = {
             ensembleDetails: ensembleDetails,
             parameters: parameterArray,
             sensitivities: sensitivityArray,

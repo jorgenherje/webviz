@@ -70,7 +70,7 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         function handleTitleChange() {
             let ensembleName = "";
             if (ensembleIdent) {
-                const ensemble = ensembleSet.findEnsemble(ensembleIdent);
+                const ensemble = ensembleSet.findRegularEnsemble(ensembleIdent);
                 ensembleName = ensemble?.getDisplayName() ?? "";
             }
 
@@ -92,9 +92,9 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         userSelectedCustomIntersectionPolylineIdAtom
     );
 
-    const fieldIdentifier = ensembleIdent
-        ? ensembleSet.findEnsemble(ensembleIdent)?.getFieldIdentifier() ?? null
-        : null;
+    const ensemble = ensembleIdent ? ensembleSet.findRegularEnsemble(ensembleIdent) ?? null : null;
+
+    const fieldIdentifier = ensemble?.getFieldIdentifier() ?? null;
     const fieldWellboreTrajectoriesQuery = useFieldWellboreTrajectoriesQuery(fieldIdentifier ?? undefined);
 
     usePropagateApiErrorToStatusWriter(fieldWellboreTrajectoriesQuery, statusWriter);
@@ -166,7 +166,7 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
 
     // Polyline intersection query
     const polylineIntersectionQuery = useGridPolylineIntersectionQuery(
-        ensembleIdent ?? null,
+        ensembleIdent,
         gridModelName,
         gridModelParameterName,
         gridModelParameterDateOrInterval,
@@ -180,8 +180,8 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
 
     // Grid surface query
     const gridSurfaceQuery = useGridSurfaceQuery(
-        ensembleIdent?.getCaseUuid() ?? null,
-        ensembleIdent?.getEnsembleName() ?? null,
+        ensemble?.getCaseUuid() ?? null,
+        ensemble?.getEnsembleName() ?? null,
         gridModelName,
         realization,
         gridCellIndexRanges.i[0],
@@ -194,8 +194,8 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
 
     // Grid parameter query
     const gridParameterQuery = useGridParameterQuery(
-        ensembleIdent?.getCaseUuid() ?? null,
-        ensembleIdent?.getEnsembleName() ?? null,
+        ensemble?.getCaseUuid() ?? null,
+        ensemble?.getEnsembleName() ?? null,
         gridModelName,
         gridModelParameterName,
         gridModelParameterDateOrInterval,

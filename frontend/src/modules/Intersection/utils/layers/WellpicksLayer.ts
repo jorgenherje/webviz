@@ -1,6 +1,6 @@
 import { transformFormationData } from "@equinor/esv-intersection";
 import { apiService } from "@framework/ApiService";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
@@ -13,7 +13,7 @@ const CACHE_TIME = 60 * 1000;
 export type WellpicksLayerSettings = {
     wellboreUuid: string | null;
     fieldIdentifier: string | null;
-    ensembleIdent: RegularEnsembleIdent | null;
+    ensembleIdent: string | null;
     filterPicks: boolean;
     selectedUnitPicks: string[];
     selectedNonUnitPicks: string[];
@@ -90,9 +90,17 @@ export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellPicksL
             gcTime: CACHE_TIME,
         });
 
+        let caseUuid: string | null = null;
+        if (
+            this._settings.ensembleIdent &&
+            EnsembleIdent.isValidRegularEnsembleIdentString(this._settings.ensembleIdent)
+        ) {
+            caseUuid = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(this._settings.ensembleIdent).caseUuid;
+        }
+
         const stratigraphicUnitsPromise = queryClient.fetchQuery({
-            queryKey: ["getStratigraphicUnits", this._settings.ensembleIdent?.getCaseUuid()],
-            queryFn: () => apiService.surface.getStratigraphicUnits(this._settings.ensembleIdent?.getCaseUuid() ?? ""),
+            queryKey: ["getStratigraphicUnits", caseUuid],
+            queryFn: () => apiService.surface.getStratigraphicUnits(caseUuid ?? ""),
             staleTime: STALE_TIME,
             gcTime: CACHE_TIME,
         });

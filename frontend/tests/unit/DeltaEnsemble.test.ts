@@ -1,5 +1,5 @@
 import { DeltaEnsemble } from "@framework/DeltaEnsemble";
-import { DeltaEnsembleIdent } from "@framework/DeltaEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleParameters, ParameterType } from "@framework/EnsembleParameters";
 import { SensitivityType } from "@framework/EnsembleSensitivities";
 import { RegularEnsemble } from "@framework/RegularEnsemble";
@@ -63,7 +63,7 @@ describe("DeltaEnsemble", () => {
 
     test("should return the correct ident", () => {
         expect(DELTA_ENSEMBLE.getIdent()).toEqual(
-            new DeltaEnsembleIdent(COMPARE_ENSEMBLE.getIdent(), REFERENCE_ENSEMBLE.getIdent())
+            EnsembleIdent.createDeltaEnsembleIdentString(COMPARE_ENSEMBLE.getIdent(), REFERENCE_ENSEMBLE.getIdent())
         );
     });
 
@@ -78,7 +78,7 @@ describe("DeltaEnsemble", () => {
     });
 
     test("should return the correct ensemble name", () => {
-        const expectedEnsembleName = `(${COMPARE_ENSEMBLE.getIdent().getEnsembleName()}) - (${REFERENCE_ENSEMBLE.getIdent().getEnsembleName()})`;
+        const expectedEnsembleName = `(ensemble1) - (ensemble2)`;
         expect(DELTA_ENSEMBLE.getEnsembleName()).toBe(expectedEnsembleName);
     });
 
@@ -114,11 +114,11 @@ describe("DeltaEnsemble", () => {
     });
 
     test("should return the correct compare ensemble ident", () => {
-        expect(DELTA_ENSEMBLE.getCompareEnsembleIdent().equals(COMPARE_ENSEMBLE.getIdent())).toBe(true);
+        expect(DELTA_ENSEMBLE.getCompareEnsembleIdent()).toBe(COMPARE_ENSEMBLE.getIdent());
     });
 
     test("should return the correct reference ensemble ident", () => {
-        expect(DELTA_ENSEMBLE.getReferenceEnsembleIdent().equals(REFERENCE_ENSEMBLE.getIdent())).toBe(true);
+        expect(DELTA_ENSEMBLE.getReferenceEnsembleIdent()).toBe(REFERENCE_ENSEMBLE.getIdent());
     });
 
     test("should return the correct compare ensemble realizations", () => {

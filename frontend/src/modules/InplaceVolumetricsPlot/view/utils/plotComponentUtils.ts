@@ -1,5 +1,4 @@
 import { EnsembleSet } from "@framework/EnsembleSet";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { PlotType } from "@modules/InplaceVolumetricsPlot/typesAndEnums";
 import { Table } from "@modules/_shared/InplaceVolumetrics/Table";
@@ -21,7 +20,7 @@ export function makeFormatLabelFunction(
 ): (columnName: string, value: string | number) => string {
     return function formatLabel(columnName: string, value: string | number): string {
         if (columnName === SourceIdentifier.ENSEMBLE) {
-            const ensembleIdent = RegularEnsembleIdent.fromString(value.toString());
+            const ensembleIdent = value.toString();
             const ensemble = ensembleSet.findEnsemble(ensembleIdent);
             if (ensemble) {
                 return makeDistinguishableEnsembleDisplayName(ensembleIdent, ensembleSet.getRegularEnsembleArray());
@@ -81,7 +80,7 @@ export function makePlotData(
         for (const [key, table] of collection.getCollectionMap()) {
             let title = key.toString();
             if (colorBy === SourceIdentifier.ENSEMBLE) {
-                const ensembleIdent = RegularEnsembleIdent.fromString(key.toString());
+                const ensembleIdent = key.toString();
                 const ensemble = ensembleSet.findEnsemble(ensembleIdent);
                 if (ensemble) {
                     color = ensemble.getColor();

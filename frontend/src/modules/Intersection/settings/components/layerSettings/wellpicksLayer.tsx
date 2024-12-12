@@ -1,7 +1,6 @@
 import React from "react";
 
 import { EnsembleSet } from "@framework/EnsembleSet";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
@@ -45,7 +44,7 @@ export function WellpicksLayerSettingsComponent(props: WellpicksLayerSettingsCom
         [newSettings, props.layer]
     );
 
-    function handleEnsembleChange(ensembleIdent: RegularEnsembleIdent | null) {
+    function handleEnsembleChange(ensembleIdent: string | null) {
         setNewSettings((prev) => ({ ...prev, ensembleIdent }));
     }
 

@@ -3,9 +3,7 @@ import { EnsembleSet } from "@framework/EnsembleSet";
 import { atom } from "jotai";
 import { isEqual } from "lodash";
 
-import { DeltaEnsembleIdent } from "./DeltaEnsembleIdent";
 import { RealizationFilterSet } from "./RealizationFilterSet";
-import { RegularEnsembleIdent } from "./RegularEnsembleIdent";
 import { EnsembleRealizationFilterFunction } from "./WorkbenchSession";
 import { atomWithCompare } from "./utils/atomUtils";
 
@@ -27,7 +25,7 @@ export const EnsembleRealizationFilterFunctionAtom = atom<EnsembleRealizationFil
         return null;
     }
 
-    return (ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent) =>
+    return (ensembleIdent: string) =>
         realizationFilterSet.getRealizationFilterForEnsembleIdent(ensembleIdent).getFilteredRealizations();
 });
 
@@ -41,7 +39,7 @@ export const ValidEnsembleRealizationsFunctionAtom = atom((get) => {
     let validEnsembleRealizationsFunction = get(EnsembleRealizationFilterFunctionAtom);
 
     if (validEnsembleRealizationsFunction === null) {
-        validEnsembleRealizationsFunction = (ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent) => {
+        validEnsembleRealizationsFunction = (ensembleIdent: string) => {
             return ensembleSet.findEnsemble(ensembleIdent)?.getRealizations() ?? [];
         };
     }

@@ -1,6 +1,5 @@
 import { ContinuousParameter, ParameterIdent, ParameterType } from "@framework/EnsembleParameters";
 import { RegularEnsemble } from "@framework/RegularEnsemble";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { ColorScale } from "@lib/utils/ColorScale";
 import { MinMax } from "@lib/utils/MinMax";
 
@@ -13,19 +12,19 @@ export class EnsemblesContinuousParameterColoring {
      */
 
     private _parameterIdent: ParameterIdent;
-    private _ensembleContinuousParameterMap: Map<RegularEnsembleIdent, ContinuousParameter>;
+    private _regularEnsembleContinuousParameterMap: Map<string, ContinuousParameter>;
     private _colorScale: ColorScale;
 
     constructor(selectedRegularEnsembles: RegularEnsemble[], parameterIdent: ParameterIdent, colorScale: ColorScale) {
         this._parameterIdent = parameterIdent;
-        this._ensembleContinuousParameterMap = new Map<RegularEnsembleIdent, ContinuousParameter>();
+        this._regularEnsembleContinuousParameterMap = new Map<string, ContinuousParameter>();
         let minMax = MinMax.createInvalid();
         for (const ensemble of selectedRegularEnsembles) {
             const ensembleParameters = ensemble.getParameters();
             const parameter = ensembleParameters.findParameter(parameterIdent);
             if (!parameter || parameter.type !== ParameterType.CONTINUOUS) continue;
 
-            this._ensembleContinuousParameterMap.set(ensemble.getIdent(), parameter);
+            this._regularEnsembleContinuousParameterMap.set(ensemble.getIdent(), parameter);
             minMax = minMax.extendedBy(ensembleParameters.getContinuousParameterMinMax(parameterIdent));
         }
 
@@ -45,28 +44,26 @@ export class EnsemblesContinuousParameterColoring {
         return this._colorScale;
     }
 
-    hasParameterForEnsemble(ensembleIdent: RegularEnsembleIdent): boolean {
-        return this._ensembleContinuousParameterMap.has(ensembleIdent);
+    hasParameterForEnsemble(ensembleIdent: string): boolean {
+        return this._regularEnsembleContinuousParameterMap.has(ensembleIdent);
     }
 
-    hasParameterRealizationValue(ensembleIdent: RegularEnsembleIdent, realization: number): boolean {
-        const parameter = this._ensembleContinuousParameterMap.get(ensembleIdent);
+    hasParameterRealizationValue(ensembleIdent: string, realization: number): boolean {
+        const parameter = this._regularEnsembleContinuousParameterMap.get(ensembleIdent);
         if (parameter === undefined) return false;
 
         return parameter.realizations.indexOf(realization) !== -1;
     }
 
-    getParameterRealizationValue(ensembleIdent: RegularEnsembleIdent, realization: number): number {
+    getParameterRealizationValue(ensembleIdent: string, realization: number): number {
         if (!this.hasParameterRealizationValue(ensembleIdent, realization)) {
             throw new Error(
-                `Parameter ${this.getParameterDisplayName()} has no numerical value for realization ${realization} in ensemble ${ensembleIdent.toString()}`
+                `Parameter ${this.getParameterDisplayName()} has no numerical value for realization ${realization} in ensemble ${ensembleIdent}`
             );
         }
-        const parameter = this._ensembleContinuousParameterMap.get(ensembleIdent);
+        const parameter = this._regularEnsembleContinuousParameterMap.get(ensembleIdent);
         if (parameter === undefined) {
-            throw new Error(
-                `Parameter ${this.getParameterDisplayName()} not found in ensemble ${ensembleIdent.toString()}`
-            );
+            throw new Error(`Parameter ${this.getParameterDisplayName()} not found in ensemble ${ensembleIdent}`);
         }
         const realizationIndex = parameter.realizations.indexOf(realization);
         return parameter.values[realizationIndex];

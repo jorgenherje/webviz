@@ -14,7 +14,7 @@ export const fieldWellboreTrajectoriesQueryAtom = atomWithQuery((get) => {
 
     let fieldIdentifier: string | null = null;
     if (ensembleIdent) {
-        const ensemble = ensembleSet.findEnsemble(ensembleIdent);
+        const ensemble = ensembleSet.findRegularEnsemble(ensembleIdent);
         if (ensemble) {
             fieldIdentifier = ensemble.getFieldIdentifier();
         }

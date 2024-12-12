@@ -1,5 +1,4 @@
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { fixupEnsembleIdent } from "@framework/utils/ensembleUiHelpers";
 import { isProdTable } from "@modules/Vfp/utils/vfpTableClassifier";
 
@@ -30,7 +29,7 @@ export const availableVfpTableNamesAtom = atom<string[]>((get) => {
     return vfpTableNamesQueryResult.data?.map((item) => item) ?? [];
 });
 
-export const selectedEnsembleIdentAtom = atom<RegularEnsembleIdent | null>((get) => {
+export const selectedEnsembleIdentAtom = atom<string | null>((get) => {
     const ensembleSet = get(EnsembleSetAtom);
     const userSelectedEnsembleIdent = get(userSelectedEnsembleIdentAtom);
 

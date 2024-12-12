@@ -1,7 +1,5 @@
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
-
 export interface VectorSpec {
-    ensembleIdent: RegularEnsembleIdent;
+    ensembleIdent: string;
     vectorName: string;
     hasHistorical: boolean;
 }

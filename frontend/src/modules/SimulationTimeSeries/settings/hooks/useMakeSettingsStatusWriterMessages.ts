@@ -1,6 +1,4 @@
-import { DeltaEnsembleIdent } from "@framework/DeltaEnsembleIdent";
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { SettingsStatusWriter } from "@framework/StatusWriter";
 import { joinStringArrayToHumanReadableString } from "@modules/SimulationTimeSeries/utils/stringUtils";
 
@@ -30,13 +28,7 @@ export function useMakeSettingsStatusWriterMessages(statusWriter: SettingsStatus
     }
 
     // Set warning for vector names not existing in a selected ensemble
-    function validateVectorNamesInEnsemble(
-        vectorNames: string[],
-        ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent
-    ) {
-        if (ensembleIdent instanceof DeltaEnsembleIdent) {
-            return;
-        }
+    function validateVectorNamesInEnsemble(vectorNames: string[], ensembleIdent: string) {
         const existingVectors = vectorNames.filter((vector) =>
             ensembleVectorListsHelper.isVectorInEnsemble(ensembleIdent, vector)
         );
@@ -45,7 +37,7 @@ export function useMakeSettingsStatusWriterMessages(statusWriter: SettingsStatus
         }
 
         const nonExistingVectors = vectorNames.filter((vector) => !existingVectors.includes(vector));
-        const ensembleStr = ensembleSet.findEnsemble(ensembleIdent)?.getDisplayName() ?? ensembleIdent.toString();
+        const ensembleStr = ensembleSet.findEnsemble(ensembleIdent)?.getDisplayName() ?? ensembleIdent;
         const vectorArrayStr = joinStringArrayToHumanReadableString(nonExistingVectors);
         statusWriter.addWarning(`Vector ${vectorArrayStr} does not exist in ensemble ${ensembleStr}`);
     }

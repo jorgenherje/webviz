@@ -1,6 +1,6 @@
 import { ApiError, PvtData_api } from "@api";
 import { apiService } from "@framework/ApiService";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { atomWithQueries } from "@framework/utils/atomUtils";
 import { UseQueryResult } from "@tanstack/react-query";
 
@@ -15,7 +15,7 @@ export const pvtDataQueriesAtom = atomWithQueries((get) => {
     const selectedEnsembleIdents = get(selectedEnsembleIdentsAtom);
     const selectedRealizations = get(selectedRealizationsAtom);
 
-    const ensembleIdentsAndRealizations: { ensembleIdent: RegularEnsembleIdent; realization: number }[] = [];
+    const ensembleIdentsAndRealizations: { ensembleIdent: string; realization: number }[] = [];
     for (const ensembleIdent of selectedEnsembleIdents) {
         for (const realization of selectedRealizations) {
             ensembleIdentsAndRealizations.push({ ensembleIdent, realization });
@@ -24,17 +24,18 @@ export const pvtDataQueriesAtom = atomWithQueries((get) => {
 
     const queries = ensembleIdentsAndRealizations
         .map((el) => {
+            let caseUuid: string | null = null;
+            let ensembleName: string | null = null;
+            if (EnsembleIdent.isValidRegularEnsembleIdentString(el.ensembleIdent)) {
+                ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(el.ensembleIdent));
+            }
+
             return () => ({
-                queryKey: ["pvtTableData", el.ensembleIdent.toString(), el.realization],
-                queryFn: () =>
-                    apiService.pvt.tableData(
-                        el.ensembleIdent.getCaseUuid(),
-                        el.ensembleIdent.getEnsembleName(),
-                        el.realization
-                    ),
+                queryKey: ["pvtTableData", caseUuid, ensembleName, el.realization],
+                queryFn: () => apiService.pvt.tableData(caseUuid ?? "", ensembleName ?? "", el.realization),
                 staleTime: STALE_TIME,
                 gcTime: CACHE_TIME,
-                enabled: !!(el.ensembleIdent && el.realization !== null),
+                enabled: !!(caseUuid && ensembleName && el.realization !== null),
             });
         })
         .flat();

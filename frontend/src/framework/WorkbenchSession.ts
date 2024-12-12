@@ -1,15 +1,11 @@
 import React from "react";
 
 import { AtomStoreMaster } from "./AtomStoreMaster";
-import { DeltaEnsembleIdent } from "./DeltaEnsembleIdent";
 import { EnsembleSet } from "./EnsembleSet";
 import { RealizationFilterSet } from "./RealizationFilterSet";
-import { RegularEnsembleIdent } from "./RegularEnsembleIdent";
 import { UserCreatedItems } from "./UserCreatedItems";
 
-export type EnsembleRealizationFilterFunction = (
-    ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent
-) => readonly number[];
+export type EnsembleRealizationFilterFunction = (ensembleIdent: string) => readonly number[];
 
 export enum WorkbenchSessionEvent {
     EnsembleSetChanged = "EnsembleSetChanged",
@@ -80,9 +76,7 @@ export class WorkbenchSession {
 }
 
 function createEnsembleRealizationFilterFuncForWorkbenchSession(workbenchSession: WorkbenchSession) {
-    return function ensembleRealizationFilterFunc(
-        ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent
-    ): readonly number[] {
+    return function ensembleRealizationFilterFunc(ensembleIdent: string): readonly number[] {
         const realizationFilterSet = workbenchSession.getRealizationFilterSet();
         const realizationFilter = realizationFilterSet.getRealizationFilterForEnsembleIdent(ensembleIdent);
 

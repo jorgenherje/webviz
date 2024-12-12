@@ -1,8 +1,7 @@
-import { DeltaEnsembleIdent } from "./DeltaEnsembleIdent";
+import { EnsembleIdent } from "./EnsembleIdent";
 import { EnsembleParameters } from "./EnsembleParameters";
 import { EnsembleSensitivities } from "./EnsembleSensitivities";
 import { RegularEnsemble } from "./RegularEnsemble";
-import { RegularEnsembleIdent } from "./RegularEnsembleIdent";
 
 /**
  * Delta ensemble class.
@@ -15,7 +14,8 @@ import { RegularEnsembleIdent } from "./RegularEnsembleIdent";
  *
  */
 export class DeltaEnsemble {
-    private _deltaEnsembleIdent: DeltaEnsembleIdent;
+    private _deltaEnsembleName: string;
+    private _deltaEnsembleIdentString: string;
     private _compareEnsemble: RegularEnsemble;
     private _referenceEnsemble: RegularEnsemble;
     private _color: string;
@@ -31,7 +31,11 @@ export class DeltaEnsemble {
         color: string,
         customName: string | null = null
     ) {
-        this._deltaEnsembleIdent = new DeltaEnsembleIdent(compareEnsemble.getIdent(), referenceEnsemble.getIdent());
+        this._deltaEnsembleName = `(${compareEnsemble.getEnsembleName()}) - (${referenceEnsemble.getEnsembleName()})`;
+        this._deltaEnsembleIdentString = EnsembleIdent.createDeltaEnsembleIdentString(
+            compareEnsemble.getIdent(),
+            referenceEnsemble.getIdent()
+        );
 
         this._compareEnsemble = compareEnsemble;
         this._referenceEnsemble = referenceEnsemble;
@@ -51,8 +55,8 @@ export class DeltaEnsemble {
         this._sensitivities = null;
     }
 
-    getIdent(): DeltaEnsembleIdent {
-        return this._deltaEnsembleIdent;
+    getIdent(): string {
+        return this._deltaEnsembleIdentString;
     }
 
     getDisplayName(): string {
@@ -60,11 +64,11 @@ export class DeltaEnsemble {
             return this._customName;
         }
 
-        return `${this._compareEnsemble.getDisplayName()} - ${this._referenceEnsemble.getDisplayName()}`;
+        return `(${this._compareEnsemble.getDisplayName()}) - (${this._referenceEnsemble.getDisplayName()})`;
     }
 
     getEnsembleName(): string {
-        return this._deltaEnsembleIdent.getEnsembleName();
+        return this._deltaEnsembleName;
     }
 
     getRealizations(): readonly number[] {
@@ -95,11 +99,11 @@ export class DeltaEnsemble {
         return this._sensitivities;
     }
 
-    getCompareEnsembleIdent(): RegularEnsembleIdent {
+    getCompareEnsembleIdent(): string {
         return this._compareEnsemble.getIdent();
     }
 
-    getReferenceEnsembleIdent(): RegularEnsembleIdent {
+    getReferenceEnsembleIdent(): string {
         return this._referenceEnsemble.getIdent();
     }
 

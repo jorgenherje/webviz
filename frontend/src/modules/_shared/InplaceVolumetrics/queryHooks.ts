@@ -7,7 +7,7 @@ import {
     InplaceVolumetricsIdentifier_api,
 } from "@api";
 import { apiService } from "@framework/ApiService";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import {
     InplaceVolumetricsStatisticalTableData,
     InplaceVolumetricsTableData,
@@ -15,7 +15,7 @@ import {
 import { UseQueryResult } from "@tanstack/react-query";
 
 export type EnsembleIdentWithRealizations = {
-    ensembleIdent: RegularEnsembleIdent;
+    ensembleIdent: string;
     realizations: readonly number[];
 };
 
@@ -48,8 +48,7 @@ export function useGetAggregatedStatisticalTableDataQueries(
     identifiersWithValues: InplaceVolumetricsIdentifierWithValues_api[],
     allowEnable: boolean
 ) {
-    const uniqueSources: { ensembleIdent: RegularEnsembleIdent; realizations: readonly number[]; tableName: string }[] =
-        [];
+    const uniqueSources: { ensembleIdent: string; realizations: readonly number[]; tableName: string }[] = [];
     for (const el of ensembleIdentsWithRealizations) {
         for (const tableName of tableNames) {
             uniqueSources.push({ ensembleIdent: el.ensembleIdent, realizations: el.realizations, tableName });
@@ -61,10 +60,17 @@ export function useGetAggregatedStatisticalTableDataQueries(
 
     const queries = uniqueSources.map((source) => {
         const validRealizations = source.realizations.length === 0 ? null : [...source.realizations];
+
+        let caseUuid = "";
+        let ensembleName = "";
+        if (source.ensembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(source.ensembleIdent)) {
+            ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(source.ensembleIdent));
+        }
+
         return () => ({
             queryKey: [
                 "postGetAggregatedStatisticalTableData",
-                source.ensembleIdent.toString(),
+                source.ensembleIdent,
                 source.tableName,
                 source.realizations,
                 fluidZones,
@@ -75,8 +81,8 @@ export function useGetAggregatedStatisticalTableDataQueries(
             ],
             queryFn: () =>
                 apiService.inplaceVolumetrics.postGetAggregatedStatisticalTableData(
-                    source.ensembleIdent.getCaseUuid(),
-                    source.ensembleIdent.getEnsembleName(),
+                    caseUuid,
+                    ensembleName,
                     source.tableName,
                     resultNames,
                     fluidZones,
@@ -145,8 +151,7 @@ export function useGetAggregatedPerRealizationTableDataQueries(
     identifiersWithValues: InplaceVolumetricsIdentifierWithValues_api[],
     allowEnable: boolean
 ) {
-    const uniqueSources: { ensembleIdent: RegularEnsembleIdent; realizations: readonly number[]; tableName: string }[] =
-        [];
+    const uniqueSources: { ensembleIdent: string; realizations: readonly number[]; tableName: string }[] = [];
     for (const el of ensembleIdentsWithRealizations) {
         for (const tableName of tableNames) {
             uniqueSources.push({ ensembleIdent: el.ensembleIdent, realizations: el.realizations, tableName });
@@ -158,10 +163,17 @@ export function useGetAggregatedPerRealizationTableDataQueries(
 
     const queries = uniqueSources.map((source) => {
         const validRealizations = source.realizations.length === 0 ? null : [...source.realizations];
+
+        let caseUuid = "";
+        let ensembleName = "";
+        if (source.ensembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(source.ensembleIdent)) {
+            ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(source.ensembleIdent));
+        }
+
         return () => ({
             queryKey: [
                 "postGetAggregatedPerRealizationTableData",
-                source.ensembleIdent.toString(),
+                source.ensembleIdent,
                 source.tableName,
                 source.realizations,
                 fluidZones,
@@ -172,8 +184,8 @@ export function useGetAggregatedPerRealizationTableDataQueries(
             ],
             queryFn: () =>
                 apiService.inplaceVolumetrics.postGetAggregatedPerRealizationTableData(
-                    source.ensembleIdent.getCaseUuid(),
-                    source.ensembleIdent.getEnsembleName(),
+                    caseUuid,
+                    ensembleName,
                     source.tableName,
                     resultNames,
                     fluidZones,

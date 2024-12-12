@@ -2,7 +2,6 @@ import React from "react";
 
 import { ModuleViewProps } from "@framework/Module";
 import { RegularEnsemble } from "@framework/RegularEnsemble";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { ApiErrorHelper } from "@framework/utils/ApiErrorHelper";
@@ -71,13 +70,13 @@ export function View({ viewContext, workbenchSettings, workbenchSession }: Modul
 
         const selectedEnsembles: RegularEnsemble[] = [];
         for (const ensembleIdent of selectedEnsembleIdents) {
-            const ensemble = ensembleSet.findEnsemble(ensembleIdent);
+            const ensemble = ensembleSet.findRegularEnsemble(ensembleIdent);
             if (ensemble) {
                 selectedEnsembles.push(ensemble);
             }
         }
 
-        function makeEnsembleDisplayName(ensembleIdent: RegularEnsembleIdent): string {
+        function makeEnsembleDisplayName(ensembleIdent: string): string {
             return makeDistinguishableEnsembleDisplayName(ensembleIdent, selectedEnsembles);
         }
 

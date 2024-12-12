@@ -2,7 +2,6 @@ import React from "react";
 
 import { Frequency_api, NodeType_api } from "@api";
 import { ModuleSettingsProps } from "@framework/Module";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
 import { useEnsembleRealizationFilterFunc, useEnsembleSet } from "@framework/WorkbenchSession";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
@@ -94,7 +93,7 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
         setUserSelectedEdgeKey(value);
     }
 
-    function handleEnsembleSelectionChange(ensembleIdent: RegularEnsembleIdent | null) {
+    function handleEnsembleSelectionChange(ensembleIdent: string | null) {
         setUserSelectedEnsembleIdent(ensembleIdent);
     }
 

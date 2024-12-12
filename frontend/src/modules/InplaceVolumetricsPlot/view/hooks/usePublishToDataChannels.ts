@@ -2,7 +2,6 @@ import { InplaceVolumetricResultName_api } from "@api";
 import { ChannelContentDefinition, ChannelContentMetaData, DataGenerator } from "@framework/DataChannelTypes";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { ViewContext } from "@framework/ModuleContext";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { ChannelIds } from "@modules/InplaceVolumetricsPlot/channelDefs";
 import { Interfaces } from "@modules/InplaceVolumetricsPlot/interfaces";
 import { Table } from "@modules/_shared/InplaceVolumetrics/Table";
@@ -11,7 +10,7 @@ import { makeDistinguishableEnsembleDisplayName } from "@modules/_shared/ensembl
 
 function makeDataGeneratorFunc(
     ensembleName: string,
-    ensembleIdent: RegularEnsembleIdent,
+    ensembleIdent: string,
     tableName: string,
     fluidZone: string,
     table: Table,
@@ -34,7 +33,7 @@ function makeDataGeneratorFunc(
 
         const metaData: ChannelContentMetaData = {
             unit: "",
-            ensembleIdentString: ensembleIdent.toString(),
+            ensembleIdent: ensembleIdent,
             displayString: `${resultName} (${ensembleName}, ${tableName}, ${fluidZone})`,
         };
 
@@ -55,8 +54,8 @@ export function usePublishToDataChannels(
 
     if (table && resultName) {
         const ensembleCollection = table.splitByColumn(SourceIdentifier.ENSEMBLE);
-        for (const [ensembleIdentStr, ensembleTable] of ensembleCollection.getCollectionMap()) {
-            const ensembleIdent = RegularEnsembleIdent.fromString(ensembleIdentStr.toString());
+        for (const [ensembleIdentStrOrNumber, ensembleTable] of ensembleCollection.getCollectionMap()) {
+            const ensembleIdent = ensembleIdentStrOrNumber.toString();
             const ensembleName = makeDistinguishableEnsembleDisplayName(
                 ensembleIdent,
                 ensembleSet.getRegularEnsembleArray()
@@ -75,7 +74,7 @@ export function usePublishToDataChannels(
                         resultName
                     );
                     contents.push({
-                        contentIdString: `${fluidZone}-${tableName}-${ensembleIdentStr}`,
+                        contentIdString: `${fluidZone}-${tableName}-${ensembleIdentStrOrNumber}`,
                         displayName: `${resultName} (${ensembleName}, ${tableName}, ${fluidZone})`,
                         dataGenerator,
                     });

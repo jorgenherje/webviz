@@ -2,7 +2,6 @@ import React from "react";
 
 import { KeyKind } from "@framework/DataChannelTypes";
 import { ModuleSettingsProps } from "@framework/Module";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { Checkbox } from "@lib/components/Checkbox";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
 import { Dropdown } from "@lib/components/Dropdown";
@@ -27,7 +26,6 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
     const [showLabels, setShowLabels] = useAtom(showLabelsAtom);
     const [showRealizationPoints, setShowRealizationPoints] = useAtom(showRealizationPointsAtom);
     const setModuleReferenceSensitivityName = useSetAtom(referenceSensitivityNameAtom);
-    // const selectedSensitivity = settingsContext.useViewToSettingsInterfaceValue("selectedSensitivity");
     const [referenceSensitivityName, setReferenceSensitivityName] = React.useState<string | null>(null);
 
     const ensembleSet = workbenchSession.getEnsembleSet();
@@ -48,12 +46,11 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
     if (responseReceiver.channel) {
         if (
             responseReceiver.channel.contents.length > 0 &&
-            responseReceiver.channel.contents[0].metaData.ensembleIdentString
+            responseReceiver.channel.contents[0].metaData.ensembleIdent
         ) {
-            const ensembleIdentString = responseReceiver.channel.contents[0].metaData.ensembleIdentString;
-            if (typeof ensembleIdentString === "string") {
+            const ensembleIdent = responseReceiver.channel.contents[0].metaData.ensembleIdent;
+            if (typeof ensembleIdent === "string") {
                 try {
-                    const ensembleIdent = RegularEnsembleIdent.fromString(ensembleIdentString);
                     const ensemble = ensembleSet.findEnsemble(ensembleIdent);
                     if (ensemble) {
                         sensitivityNames.push(

@@ -1,5 +1,4 @@
 import { EnsembleSetAtom, ValidEnsembleRealizationsFunctionAtom } from "@framework/GlobalAtoms";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { DataLoadingStatus, TimeAggregationSelection } from "@modules/WellCompletions/typesAndEnums";
 import { WellCompletionsDataAccessor } from "@modules/WellCompletions/utils/wellCompletionsDataAccessor";
 import { PlotData } from "@webviz/well-completions-plot";
@@ -22,7 +21,7 @@ import {
 } from "./baseAtoms";
 import { wellCompletionsQueryAtom } from "./queryAtoms";
 
-export const selectedEnsembleIdentAtom = atom<RegularEnsembleIdent | null>((get) => {
+export const selectedEnsembleIdentAtom = atom<string | null>((get) => {
     const syncedEnsembleIdents = get(syncedEnsembleIdentsAtom);
     const userSelectedEnsembleIdent = get(userSelectedEnsembleIdentAtom);
     const ensembleSet = get(EnsembleSetAtom);

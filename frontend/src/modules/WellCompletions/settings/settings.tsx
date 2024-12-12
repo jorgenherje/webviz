@@ -1,7 +1,6 @@
 import React from "react";
 
 import { ModuleSettingsProps } from "@framework/Module";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
@@ -96,7 +95,7 @@ export const Settings = ({
         userSelectedSortWellsDirectionAtom
     );
 
-    const [prevSyncedEnsembleIdents, setPrevSyncedEnsembleIdents] = React.useState<RegularEnsembleIdent[] | null>(null);
+    const [prevSyncedEnsembleIdents, setPrevSyncedEnsembleIdents] = React.useState<string[] | null>(null);
     const [prevStratigraphyColorSet, setPrevStratigraphyColorSet] = React.useState<ColorSet | null>(null);
 
     const syncedSettingKeys = settingsContext.useSyncedSettingKeys();
@@ -118,7 +117,7 @@ export const Settings = ({
 
     useMakeSettingsStatusWriterMessages(statusWriter);
 
-    function handleEnsembleSelectionChange(newEnsembleIdent: RegularEnsembleIdent | null) {
+    function handleEnsembleSelectionChange(newEnsembleIdent: string | null) {
         setUserSelectedEnsembleIdent(newEnsembleIdent);
         if (newEnsembleIdent) {
             syncHelper.publishValue(SyncSettingKey.ENSEMBLE, "global.syncValue.ensembles", [newEnsembleIdent]);

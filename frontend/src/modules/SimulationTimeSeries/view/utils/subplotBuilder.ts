@@ -4,9 +4,7 @@ import {
     VectorRealizationData_api,
     VectorStatisticData_api,
 } from "@api";
-import { DeltaEnsembleIdent } from "@framework/DeltaEnsembleIdent";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
-import { isEnsembleIdentOfType } from "@framework/utils/ensembleIdentUtils";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { timestampUtcMsToCompactIsoString } from "@framework/utils/timestampUtils";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { simulationUnitReformat, simulationVectorDescription } from "@modules/_shared/reservoirSimulationStringUtils";
@@ -47,14 +45,14 @@ export class SubplotBuilder {
     private _subplotOwner: SubplotOwner;
 
     private _addedVectorsLegendTracker: string[] = [];
-    private _addedEnsemblesLegendTracker: (RegularEnsembleIdent | DeltaEnsembleIdent)[] = [];
+    private _addedEnsemblesLegendTracker: string[] = [];
 
-    private _uniqueEnsembleIdents: (RegularEnsembleIdent | DeltaEnsembleIdent)[] = [];
+    private _uniqueEnsembleIdents: string[] = [];
     private _uniqueVectorNames: string[] = [];
 
     private _vectorHexColors: HexColorMap = {};
 
-    private _makeEnsembleDisplayName: (ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent) => string;
+    private _makeEnsembleDisplayName: (ensembleIdent: string) => string;
 
     private _hasRealizationsTracesColoredByParameter = false;
     private _hasHistoryTraces = false;
@@ -81,7 +79,7 @@ export class SubplotBuilder {
     constructor(
         subplotOwner: SubplotOwner,
         selectedVectorSpecifications: VectorSpec[],
-        makeEnsembleDisplayName: (ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent) => string,
+        makeEnsembleDisplayName: (ensembleIdent: string) => string,
         colorSet: ColorSet,
         width: number,
         height: number,
@@ -96,7 +94,7 @@ export class SubplotBuilder {
         this._uniqueVectorNames = [...new Set(selectedVectorSpecifications.map((vec) => vec.vectorName))];
         this._uniqueEnsembleIdents = [];
         for (const vectorSpecification of selectedVectorSpecifications) {
-            if (this._uniqueEnsembleIdents.some((elm) => elm.equals(vectorSpecification.ensembleIdent))) continue;
+            if (this._uniqueEnsembleIdents.some((elm) => elm === vectorSpecification.ensembleIdent)) continue;
             this._uniqueEnsembleIdents.push(vectorSpecification.ensembleIdent);
         }
 
@@ -214,7 +212,7 @@ export class SubplotBuilder {
                 });
             } else if (this._subplotOwner === SubplotOwner.VECTOR) {
                 this._addedEnsemblesLegendTracker.forEach((ensembleIdent) => {
-                    const legendGroup = ensembleIdent.toString();
+                    const legendGroup = ensembleIdent;
                     const legendName = this._makeEnsembleDisplayName(ensembleIdent);
                     const legendColor =
                         this._selectedVectorSpecifications.find((el) => el.ensembleIdent === ensembleIdent)?.color ??
@@ -290,7 +288,9 @@ export class SubplotBuilder {
             if (subplotIndex === -1) continue;
 
             const ensembleIdent = elm.vectorSpecification.ensembleIdent;
-            if (!isEnsembleIdentOfType(ensembleIdent, RegularEnsembleIdent)) continue;
+            if (!EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+                continue;
+            }
 
             const hasParameterForEnsemble = this._ensemblesParameterColoring.hasParameterForEnsemble(ensembleIdent);
 
@@ -562,7 +562,7 @@ export class SubplotBuilder {
         if (this._subplotOwner === SubplotOwner.VECTOR) {
             return this._uniqueVectorNames.indexOf(vectorSpecification.vectorName);
         } else if (this._subplotOwner === SubplotOwner.ENSEMBLE) {
-            return this._uniqueEnsembleIdents.findIndex((elm) => elm.equals(vectorSpecification.ensembleIdent));
+            return this._uniqueEnsembleIdents.findIndex((elm) => elm === vectorSpecification.ensembleIdent);
         }
         return -1;
     }
@@ -572,10 +572,10 @@ export class SubplotBuilder {
         // Subplot per ensemble, keep track of added vectors
         if (this._subplotOwner === SubplotOwner.VECTOR) {
             const ensembleIdent = vectorSpecification.ensembleIdent;
-            if (!this._addedEnsemblesLegendTracker.some((elm) => elm.equals(ensembleIdent))) {
+            if (!this._addedEnsemblesLegendTracker.some((elm) => elm === ensembleIdent)) {
                 this._addedEnsemblesLegendTracker.push(ensembleIdent);
             }
-            return ensembleIdent.toString();
+            return ensembleIdent;
         } else if (this._subplotOwner === SubplotOwner.ENSEMBLE) {
             const vectorName = vectorSpecification.vectorName;
             if (!this._addedVectorsLegendTracker.includes(vectorName)) {

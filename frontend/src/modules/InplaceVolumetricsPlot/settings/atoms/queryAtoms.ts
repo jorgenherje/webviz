@@ -1,6 +1,6 @@
 import { InplaceVolumetricsTableDefinition_api } from "@api";
 import { apiService } from "@framework/ApiService";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { atomWithQueries } from "@framework/utils/atomUtils";
 import { QueryObserverResult } from "@tanstack/query-core";
 
@@ -11,7 +11,7 @@ const CACHE_TIME = 60 * 1000;
 
 export type TableDefinitionsQueryResult = {
     data: {
-        ensembleIdent: RegularEnsembleIdent;
+        ensembleIdent: string;
         tableDefinitions: InplaceVolumetricsTableDefinition_api[];
     }[];
     isLoading: boolean;
@@ -21,13 +21,15 @@ export const tableDefinitionsQueryAtom = atomWithQueries((get) => {
     const selectedEnsembleIdents = get(selectedEnsembleIdentsAtom);
 
     const queries = selectedEnsembleIdents.map((ensembleIdent) => {
+        let caseUuid = "";
+        let ensembleName = "";
+        if (EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+            ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(ensembleIdent));
+        }
+
         return () => ({
-            queryKey: ["tableDefinitions", ensembleIdent.toString()],
-            queryFn: () =>
-                apiService.inplaceVolumetrics.getTableDefinitions(
-                    ensembleIdent.getCaseUuid(),
-                    ensembleIdent.getEnsembleName()
-                ),
+            queryKey: ["tableDefinitions", ensembleIdent],
+            queryFn: () => apiService.inplaceVolumetrics.getTableDefinitions(caseUuid, ensembleName),
             staleTime: STALE_TIME,
             gcTime: CACHE_TIME,
         });

@@ -56,7 +56,7 @@ const FIRST_ENSEMBLE = new RegularEnsemble(
 describe("Test functionality of Realization Filter class", () => {
     test("Test get assigned ensembleIdent", () => {
         const firstRealizationFilter = new RealizationFilter(FIRST_ENSEMBLE);
-        expect(firstRealizationFilter.getAssignedEnsembleIdent()).toBe(FIRST_ENSEMBLE.getIdent());
+        expect(firstRealizationFilter.getAssignedEnsembleIdentString()).toBe(FIRST_ENSEMBLE.getIdent());
     });
 
     test("Test set/get filter type", () => {

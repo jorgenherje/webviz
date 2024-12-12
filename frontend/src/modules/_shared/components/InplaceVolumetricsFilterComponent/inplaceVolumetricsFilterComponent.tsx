@@ -3,7 +3,6 @@ import React from "react";
 import { FluidZone_api, InplaceVolumetricsIdentifierWithValues_api, InplaceVolumetricsIdentifier_api } from "@api";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { SettingsContext } from "@framework/ModuleContext";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { WorkbenchServices } from "@framework/WorkbenchServices";
 import { EnsembleSelect } from "@framework/components/EnsembleSelect";
@@ -21,7 +20,7 @@ export type InplaceVolumetricsFilterComponentProps = {
     availableTableNames: string[];
     availableFluidZones: FluidZone_api[];
     availableIdentifiersWithValues: InplaceVolumetricsIdentifierWithValues_api[];
-    selectedEnsembleIdents: RegularEnsembleIdent[];
+    selectedEnsembleIdents: string[];
     selectedTableNames: string[];
     selectedFluidZones: FluidZone_api[];
     selectedIdentifiersValues: InplaceVolumetricsIdentifierWithValues_api[];
@@ -34,16 +33,14 @@ export type InplaceVolumetricsFilterComponentProps = {
 };
 
 export function InplaceVolumetricsFilterComponent(props: InplaceVolumetricsFilterComponentProps): React.ReactNode {
-    const [ensembleIdents, setEnsembleIdents] = React.useState<RegularEnsembleIdent[]>(props.selectedEnsembleIdents);
+    const [ensembleIdents, setEnsembleIdents] = React.useState<string[]>(props.selectedEnsembleIdents);
     const [tableNames, setTableNames] = React.useState<string[]>(props.selectedTableNames);
     const [fluidZones, setFluidZones] = React.useState<FluidZone_api[]>(props.selectedFluidZones);
     const [identifiersValues, setIdentifiersValues] = React.useState<InplaceVolumetricsIdentifierWithValues_api[]>(
         props.selectedIdentifiersValues
     );
 
-    const [prevEnsembleIdents, setPrevEnsembleIdents] = React.useState<RegularEnsembleIdent[]>(
-        props.selectedEnsembleIdents
-    );
+    const [prevEnsembleIdents, setPrevEnsembleIdents] = React.useState<string[]>(props.selectedEnsembleIdents);
     const [prevTableNames, setPrevTableNames] = React.useState<string[]>(props.selectedTableNames);
     const [prevFluidZones, setPrevFluidZones] = React.useState<string[]>(props.selectedFluidZones);
     const [prevIdentifiersValues, setPrevIdentifiersValues] = React.useState<
@@ -171,7 +168,7 @@ export function InplaceVolumetricsFilterComponent(props: InplaceVolumetricsFilte
         }, props.debounceMs);
     }
 
-    function handleEnsembleIdentsChange(newEnsembleIdents: RegularEnsembleIdent[], publish = true): void {
+    function handleEnsembleIdentsChange(newEnsembleIdents: string[], publish = true): void {
         setEnsembleIdents(newEnsembleIdents);
         const filter = {
             ensembleIdents: newEnsembleIdents,

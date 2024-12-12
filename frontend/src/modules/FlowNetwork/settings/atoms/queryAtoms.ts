@@ -1,4 +1,5 @@
 import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 
 import { atomWithQuery } from "jotai-tanstack-query";
 
@@ -14,31 +15,32 @@ export const realizationFlowNetworkQueryAtom = atomWithQuery((get) => {
     const selectedResamplingFrequency = get(selectedResamplingFrequencyAtom);
     const selectedNodeTypes = get(selectedNodeTypesAtom);
 
+    let caseUuid: string | null = null;
+    let ensembleName: string | null = null;
+    if (selectedEnsembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(selectedEnsembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(selectedEnsembleIdent));
+    }
+
     const query = {
         queryKey: [
             "getRealizationFlowNetwork",
-            selectedEnsembleIdent?.getCaseUuid(),
-            selectedEnsembleIdent?.getEnsembleName(),
+            caseUuid,
+            ensembleName,
             selectedRealizationNumber,
             selectedResamplingFrequency,
             Array.from(selectedNodeTypes),
         ],
         queryFn: () =>
             apiService.flowNetwork.getRealizationFlowNetwork(
-                selectedEnsembleIdent?.getCaseUuid() ?? "",
-                selectedEnsembleIdent?.getEnsembleName() ?? "",
+                caseUuid ?? "",
+                ensembleName ?? "",
                 selectedRealizationNumber ?? 0,
                 selectedResamplingFrequency,
                 Array.from(selectedNodeTypes)
             ),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
-        enabled: !!(
-            selectedEnsembleIdent?.getCaseUuid() &&
-            selectedEnsembleIdent?.getEnsembleName() &&
-            selectedRealizationNumber !== null &&
-            selectedNodeTypes.size > 0
-        ),
+        enabled: !!(caseUuid && ensembleName && selectedRealizationNumber !== null && selectedNodeTypes.size > 0),
     };
     return query;
 });

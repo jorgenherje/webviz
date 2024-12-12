@@ -3,7 +3,6 @@ import React from "react";
 import { KeyKind } from "@framework/DataChannelTypes";
 import { ModuleViewProps } from "@framework/Module";
 import { RegularEnsemble } from "@framework/RegularEnsemble";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { Tag } from "@lib/components/Tag";
 import { useElementSize } from "@lib/hooks/useElementSize";
@@ -48,11 +47,10 @@ export const View = ({ viewContext, workbenchSession, workbenchSettings }: Modul
                 values.push(el.value as number);
             });
         }
-        if (responseReceiver.channel.contents[0].metaData.ensembleIdentString) {
-            const ensembleIdentString = responseReceiver.channel.contents[0].metaData.ensembleIdentString;
-            if (typeof ensembleIdentString === "string") {
-                const ensembleIdent = RegularEnsembleIdent.fromString(ensembleIdentString);
-                channelEnsemble = ensembleSet.findEnsemble(ensembleIdent);
+        if (responseReceiver.channel.contents[0].metaData.ensembleIdent) {
+            const ensembleIdent = responseReceiver.channel.contents[0].metaData.ensembleIdent;
+            if (typeof ensembleIdent === "string") {
+                channelEnsemble = ensembleSet.findRegularEnsemble(ensembleIdent);
             }
         }
     }

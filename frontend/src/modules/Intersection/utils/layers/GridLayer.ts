@@ -1,5 +1,5 @@
 import { apiService } from "@framework/ApiService";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultContinuousSequentialColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
@@ -18,7 +18,7 @@ const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
 export type GridLayerSettings = {
-    ensembleIdent: RegularEnsembleIdent | null;
+    ensembleIdent: string | null;
     gridModelName: string | null;
     parameterName: string | null;
     parameterDateOrInterval: string | null;
@@ -157,13 +157,24 @@ export class GridLayer extends BaseLayer<GridLayerSettings, AdjustedPolylineInte
         const queryKey = ["getGridPolylineIntersection", ...Object.entries(this._settings)];
         this.registerQueryKey(queryKey);
 
+        let caseUuid = "";
+        let ensembleName = "";
+        if (
+            this._settings.ensembleIdent &&
+            EnsembleIdent.isValidRegularEnsembleIdentString(this._settings.ensembleIdent)
+        ) {
+            ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(
+                this._settings.ensembleIdent
+            ));
+        }
+
         return queryClient
             .fetchQuery({
                 queryKey,
                 queryFn: () =>
                     apiService.grid3D.postGetPolylineIntersection(
-                        this._settings.ensembleIdent?.getCaseUuid() ?? "",
-                        this._settings.ensembleIdent?.getEnsembleName() ?? "",
+                        caseUuid,
+                        ensembleName,
                         this._settings.gridModelName ?? "",
                         this._settings.parameterName ?? "",
                         this._settings.realizationNum ?? 0,

@@ -1,8 +1,7 @@
 import { DeltaEnsemble } from "@framework/DeltaEnsemble";
-import { DeltaEnsembleIdent } from "@framework/DeltaEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { RegularEnsemble } from "@framework/RegularEnsemble";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { fixupEnsembleIdent, fixupEnsembleIdents } from "@framework/utils/ensembleUiHelpers";
 
 import { describe, expect, test } from "vitest";
@@ -40,7 +39,7 @@ describe("fixupEnsembleIdent", () => {
     test("should return the first delta ensemble ident if currIdent is a non-existing DeltaEnsembleIdent or no regular ensembles are available", () => {
         const ensembleSetWithoutRegularEnsembles = new EnsembleSet([], deltaEnsembleArray);
 
-        const nonExistingDeltaEnsembleIdent = new DeltaEnsembleIdent(
+        const nonExistingDeltaEnsembleIdent = EnsembleIdent.createDeltaEnsembleIdentString(
             ensembleArray[2].getIdent(),
             ensembleArray[1].getIdent()
         );
@@ -122,11 +121,11 @@ describe("fixupEnsembleIdents", () => {
         const validRegularEnsembleIdent = ensembleArray[0].getIdent();
         const validDeltaEnsembleIdent = deltaEnsembleArray[0].getIdent();
 
-        const nonExistingRegularEnsembleIdent = new RegularEnsembleIdent(
+        const nonExistingRegularEnsembleIdent = EnsembleIdent.createRegularEnsembleIdentString(
             "55555555-aaaa-4444-aaaa-aaaaaaaaaaaa",
             "ens4"
         );
-        const nonExistingDeltaEnsembleIdent = new DeltaEnsembleIdent(
+        const nonExistingDeltaEnsembleIdent = EnsembleIdent.createDeltaEnsembleIdentString(
             ensembleArray[2].getIdent(),
             ensembleArray[1].getIdent()
         );

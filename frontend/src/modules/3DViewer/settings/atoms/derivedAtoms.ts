@@ -1,6 +1,5 @@
 import { Grid3dDimensions_api } from "@api";
 import { EnsembleSetAtom, ValidEnsembleRealizationsFunctionAtom } from "@framework/GlobalAtoms";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
 import { GridCellIndexRanges } from "@modules/3DViewer/typesAndEnums";
 
@@ -19,7 +18,7 @@ import {
 } from "./baseAtoms";
 import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./queryAtoms";
 
-export const selectedEnsembleIdentAtom = atom<RegularEnsembleIdent | null>((get) => {
+export const selectedEnsembleIdentAtom = atom<string | null>((get) => {
     const ensembleSet = get(EnsembleSetAtom);
     const userSelectedEnsembleIdent = get(userSelectedEnsembleIdentAtom);
 

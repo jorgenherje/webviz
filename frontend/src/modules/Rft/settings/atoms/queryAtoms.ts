@@ -1,4 +1,5 @@
 import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 
 import { atomWithQuery } from "jotai-tanstack-query";
 
@@ -15,20 +16,18 @@ const CACHE_TIME = 60 * 1000;
 export const rftTableDefinitionAtom = atomWithQuery((get) => {
     const selectedEnsembleIdent = get(selectedEnsembleIdentAtom);
 
+    let caseUuid: string | null = null;
+    let ensembleName: string | null = null;
+    if (selectedEnsembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(selectedEnsembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(selectedEnsembleIdent));
+    }
+
     const query = {
-        queryKey: [
-            "getRftTableDefinition",
-            selectedEnsembleIdent?.getCaseUuid(),
-            selectedEnsembleIdent?.getEnsembleName(),
-        ],
-        queryFn: () =>
-            apiService.rft.getTableDefinition(
-                selectedEnsembleIdent?.getCaseUuid() ?? "",
-                selectedEnsembleIdent?.getEnsembleName() ?? ""
-            ),
+        queryKey: ["getRftTableDefinition", caseUuid, ensembleName],
+        queryFn: () => apiService.rft.getTableDefinition(caseUuid ?? "", ensembleName ?? ""),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
-        enabled: !!(selectedEnsembleIdent?.getCaseUuid() && selectedEnsembleIdent?.getEnsembleName()),
+        enabled: !!(caseUuid && ensembleName),
     };
     return query;
 });
@@ -39,31 +38,32 @@ export const rftRealizationDataQueryAtom = atomWithQuery((get) => {
     const selectedResponseName = get(selectedRftResponseNameAtom);
     const selectedRftTimestampsUtcMs = get(selectedRftTimestampsUtcMsAtom);
 
+    let caseUuid: string | null = null;
+    let ensembleName: string | null = null;
+    if (selectedEnsembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(selectedEnsembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(selectedEnsembleIdent));
+    }
+
     const query = {
         queryKey: [
             "getRftRealizationData",
-            selectedEnsembleIdent?.getCaseUuid(),
-            selectedEnsembleIdent?.getEnsembleName(),
+            caseUuid,
+            ensembleName,
             selectedWellName,
             selectedResponseName,
             selectedRftTimestampsUtcMs,
         ],
         queryFn: () =>
             apiService.rft.getRealizationData(
-                selectedEnsembleIdent?.getCaseUuid() ?? "",
-                selectedEnsembleIdent?.getEnsembleName() ?? "",
+                caseUuid ?? "",
+                ensembleName ?? "",
                 selectedWellName ?? "",
                 selectedResponseName ?? "",
                 selectedRftTimestampsUtcMs ? [selectedRftTimestampsUtcMs] : null
             ),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
-        enabled: !!(
-            selectedEnsembleIdent?.getCaseUuid() &&
-            selectedEnsembleIdent?.getEnsembleName() &&
-            selectedWellName &&
-            selectedResponseName
-        ),
+        enabled: !!(caseUuid && ensembleName && selectedWellName && selectedResponseName),
     };
     return query;
 });

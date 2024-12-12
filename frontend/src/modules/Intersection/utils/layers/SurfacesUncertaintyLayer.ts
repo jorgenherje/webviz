@@ -1,6 +1,6 @@
 import { SurfaceRealizationSampleValues_api } from "@api";
 import { apiService } from "@framework/ApiService";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { Vec2, normalizeVec2, point2Distance } from "@lib/utils/vec2";
@@ -14,7 +14,7 @@ const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
 export type SurfacesUncertaintyLayerSettings = {
-    ensembleIdent: RegularEnsembleIdent | null;
+    ensembleIdent: string | null;
     realizationNums: number[];
     polyline: {
         polylineUtmXy: number[];
@@ -211,10 +211,21 @@ export class SurfacesUncertaintyLayer extends BaseLayer<SurfacesUncertaintyLayer
         };
 
         for (const surfaceName of this._settings.surfaceNames) {
+            let caseUuid = "";
+            let ensembleName = "";
+            if (
+                this._settings.ensembleIdent &&
+                EnsembleIdent.isValidRegularEnsembleIdentString(this._settings.ensembleIdent)
+            ) {
+                ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(
+                    this._settings.ensembleIdent
+                ));
+            }
+
             const queryKey = [
                 "getSurfaceIntersection",
-                this._settings.ensembleIdent?.getCaseUuid() ?? "",
-                this._settings.ensembleIdent?.getEnsembleName() ?? "",
+                caseUuid,
+                ensembleName,
                 this._settings.realizationNums,
                 surfaceName,
                 this._settings.attribute ?? "",
@@ -229,8 +240,8 @@ export class SurfacesUncertaintyLayer extends BaseLayer<SurfacesUncertaintyLayer
                     queryKey,
                     queryFn: () =>
                         apiService.surface.postSampleSurfaceInPoints(
-                            this._settings.ensembleIdent?.getCaseUuid() ?? "",
-                            this._settings.ensembleIdent?.getEnsembleName() ?? "",
+                            caseUuid,
+                            ensembleName,
                             surfaceName,
                             this._settings.attribute ?? "",
                             this._settings.realizationNums,

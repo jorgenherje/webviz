@@ -11,7 +11,7 @@ export enum ChannelContentNotificationTopic {
 }
 
 export interface ChannelContentMetaData {
-    readonly ensembleIdentString: string;
+    readonly ensembleIdent: string;
     readonly unit?: string;
     readonly displayString?: string;
     readonly preferredColor?: string;

@@ -2,7 +2,6 @@ import React from "react";
 
 import { Frequency_api } from "@api";
 import { ModuleSettingsProps } from "@framework/Module";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
@@ -37,7 +36,7 @@ import { Interfaces } from "../interfaces";
 export function Settings({ settingsContext, workbenchSession, workbenchServices }: ModuleSettingsProps<Interfaces>) {
     const ensembleSet = useEnsembleSet(workbenchSession);
 
-    const [selectedEnsembleIdent, setSelectedEnsembleIdent] = React.useState<RegularEnsembleIdent | null>(null);
+    const [selectedEnsembleIdent, setSelectedEnsembleIdent] = React.useState<string | null>(null);
     const [selectedVectorName, setSelectedVectorName] = React.useState<string | null>(null);
     const [selectedVectorTag, setSelectedVectorTag] = React.useState<string | null>(null);
     const [vectorSelectorData, setVectorSelectorData] = React.useState<TreeDataNode[]>([]);
@@ -56,11 +55,9 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
 
     const candidateEnsembleIdent = maybeAssignFirstSyncedEnsemble(selectedEnsembleIdent, syncedValueEnsembles);
     const computedEnsembleIdent = fixupEnsembleIdent(candidateEnsembleIdent, ensembleSet);
+    const computedEnsemble = computedEnsembleIdent ? ensembleSet.findRegularEnsemble(computedEnsembleIdent) : null;
 
-    const vectorsListQuery = useVectorListQuery(
-        computedEnsembleIdent?.getCaseUuid(),
-        computedEnsembleIdent?.getEnsembleName()
-    );
+    const vectorsListQuery = useVectorListQuery(computedEnsemble?.getCaseUuid(), computedEnsemble?.getEnsembleName());
 
     const hasQueryData = vectorsListQuery.data !== undefined;
     const vectorNames = vectorsListQuery.data?.map((vec) => vec.name) ?? [];
@@ -95,7 +92,6 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
     const computedVectorName = candidateVectorName;
     const computedVectorTag = candidateVectorTag;
 
-    const computedEnsemble = computedEnsembleIdent ? ensembleSet.findEnsemble(computedEnsembleIdent) : null;
     const sensitivityNames = React.useMemo(
         () => computedEnsemble?.getSensitivities()?.getSensitivityNames() ?? [],
         [computedEnsemble]
@@ -132,7 +128,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
         [computedEnsembleIdent, computedVectorName, hasComputedVectorName, hasHistoricalVector, setVectorSpec]
     );
 
-    function handleEnsembleSelectionChange(newEnsembleIdent: RegularEnsembleIdent | null) {
+    function handleEnsembleSelectionChange(newEnsembleIdent: string | null) {
         setSelectedEnsembleIdent(newEnsembleIdent);
         if (newEnsembleIdent) {
             syncHelper.publishValue(SyncSettingKey.ENSEMBLE, "global.syncValue.ensembles", [newEnsembleIdent]);

@@ -1,5 +1,5 @@
 import { apiService } from "@framework/ApiService";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import {
     PolylineIntersection_trans,
     transformPolylineIntersection,
@@ -7,7 +7,7 @@ import {
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
 export function useGridPolylineIntersection(
-    ensembleIdent: RegularEnsembleIdent | null,
+    ensembleIdent: string | null,
     gridModelName: string | null,
     gridModelParameterName: string | null,
     gridModelDateOrInterval: string | null,
@@ -15,10 +15,16 @@ export function useGridPolylineIntersection(
     polyline_utm_xy: number[],
     enabled: boolean
 ): UseQueryResult<PolylineIntersection_trans> {
+    let caseUuid = "";
+    let ensembleName = "";
+    if (ensembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(ensembleIdent));
+    }
+
     return useQuery({
         queryKey: [
             "getGridPolylineIntersection",
-            ensembleIdent?.toString() ?? "",
+            ensembleIdent ?? "",
             gridModelName,
             gridModelParameterName,
             gridModelDateOrInterval,
@@ -27,8 +33,8 @@ export function useGridPolylineIntersection(
         ],
         queryFn: () =>
             apiService.grid3D.postGetPolylineIntersection(
-                ensembleIdent?.getCaseUuid() ?? "",
-                ensembleIdent?.getEnsembleName() ?? "",
+                caseUuid,
+                ensembleName,
                 gridModelName ?? "",
                 gridModelParameterName ?? "",
                 realizationNum ?? 0,
@@ -38,9 +44,6 @@ export function useGridPolylineIntersection(
         select: transformPolylineIntersection,
         staleTime: 0,
         gcTime: 0,
-        enabled:
-            ensembleIdent && gridModelName && realizationNum !== null && polyline_utm_xy.length && enabled
-                ? true
-                : false,
+        enabled: !!(ensembleIdent && gridModelName && realizationNum !== null && polyline_utm_xy.length && enabled),
     });
 }

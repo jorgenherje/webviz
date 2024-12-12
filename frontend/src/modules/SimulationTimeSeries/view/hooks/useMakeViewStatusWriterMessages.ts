@@ -45,7 +45,7 @@ export function useMakeViewStatusWriterMessages(
 
     vectorObservationsQueries.ensembleVectorObservationDataMap.forEach((ensembleObservationData, ensembleIdent) => {
         if (showObservations && !ensembleObservationData.hasSummaryObservations) {
-            const ensembleName = ensembleSet.findEnsemble(ensembleIdent)?.getDisplayName() ?? ensembleIdent.toString();
+            const ensembleName = ensembleSet.findEnsemble(ensembleIdent)?.getDisplayName() ?? ensembleIdent;
             statusWriter.addWarning(`${ensembleName} has no observations.`);
             return;
         }

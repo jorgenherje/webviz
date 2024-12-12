@@ -1,8 +1,8 @@
 import React from "react";
 
 import { SurfaceAttributeType_api, SurfaceStatisticFunction_api } from "@api";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ModuleSettingsProps } from "@framework/Module";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
@@ -65,7 +65,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
     console.debug(`${myInstanceIdStr} -- render TopographicMap settings`);
 
     const ensembleSet = useEnsembleSet(workbenchSession);
-    const [selectedEnsembleIdent, setSelectedEnsembleIdent] = React.useState<RegularEnsembleIdent | null>(null);
+    const [selectedEnsembleIdent, setSelectedEnsembleIdent] = React.useState<string | null>(null);
     const [selectedMeshSurfaceName, setSelectedMeshSurfaceName] = React.useState<string | null>(null);
     const [selectedMeshSurfaceAttribute, setSelectedMeshSurfaceAttribute] = React.useState<string | null>(null);
     const [usePropertySurface, setUsePropertySurface] = React.useState<boolean>(false);
@@ -100,13 +100,15 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
     const syncedValueSurface = syncHelper.useValue(SyncSettingKey.SURFACE, "global.syncValue.surface");
     const candidateEnsembleIdent = maybeAssignFirstSyncedEnsemble(selectedEnsembleIdent, syncedValueEnsembles);
     const computedEnsembleIdent = fixupEnsembleIdent(candidateEnsembleIdent, ensembleSet);
-    if (computedEnsembleIdent && !computedEnsembleIdent.equals(selectedEnsembleIdent)) {
+    if (computedEnsembleIdent && computedEnsembleIdent !== selectedEnsembleIdent) {
         setSelectedEnsembleIdent(computedEnsembleIdent);
     }
+    const computedEnsemble = computedEnsembleIdent ? ensembleSet.findRegularEnsemble(computedEnsembleIdent) : null;
+
     // Mesh surface
     const meshSurfMetaQuery = useRealizationSurfacesMetadataQuery(
-        computedEnsembleIdent?.getCaseUuid(),
-        computedEnsembleIdent?.getEnsembleName()
+        computedEnsemble?.getCaseUuid(),
+        computedEnsemble?.getEnsembleName()
     );
     const meshSurfaceDirectory = new SurfaceDirectory({
         realizationMetaSet: meshSurfMetaQuery.data,
@@ -146,8 +148,8 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
 
     // Property surface
     const propertySurfMetaQuery = useRealizationSurfacesMetadataQuery(
-        computedEnsembleIdent?.getCaseUuid(),
-        computedEnsembleIdent?.getEnsembleName()
+        computedEnsemble?.getCaseUuid(),
+        computedEnsemble?.getEnsembleName()
     );
     const propertySurfaceDirectory = new SurfaceDirectory({
         realizationMetaSet: propertySurfMetaQuery.data,
@@ -203,8 +205,8 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
 
     // Polygon
     const polygonsDirectoryQuery = usePolygonsDirectoryQuery(
-        computedEnsembleIdent?.getCaseUuid(),
-        computedEnsembleIdent?.getEnsembleName()
+        computedEnsemble?.getCaseUuid(),
+        computedEnsemble?.getEnsembleName()
     );
 
     const polygonsDirectory = new PolygonsDirectory(
@@ -320,9 +322,16 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
         function propogatePolygonsSelectionToView() {
             let polygonAddr: PolygonsAddress | null = null;
             if (computedEnsembleIdent && computedPolygonsName && computedPolygonsAttribute && showPolygon) {
+                let caseUuid = "";
+                let ensembleName = "";
+                if (computedEnsembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(computedEnsembleIdent)) {
+                    ({ caseUuid, ensembleName } =
+                        EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(computedEnsembleIdent));
+                }
+
                 polygonAddr = {
-                    caseUuid: computedEnsembleIdent.getCaseUuid(),
-                    ensemble: computedEnsembleIdent.getEnsembleName(),
+                    caseUuid: caseUuid,
+                    ensemble: ensembleName,
                     name: computedPolygonsName,
                     attribute: computedPolygonsAttribute,
                     realizationNum: realizationNum,
@@ -379,11 +388,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
 
     let fieldIdentifier: null | string = null;
     if (computedEnsembleIdent) {
-        const ensembleIdent = new RegularEnsembleIdent(
-            computedEnsembleIdent.getCaseUuid(),
-            computedEnsembleIdent.getEnsembleName()
-        );
-        fieldIdentifier = ensembleSet.findEnsemble(ensembleIdent)?.getFieldIdentifier() ?? null;
+        fieldIdentifier = ensembleSet.findRegularEnsemble(computedEnsembleIdent)?.getFieldIdentifier() ?? null;
     }
     const wellHeadersQuery = useDrilledWellboreHeadersQuery(fieldIdentifier ?? "");
     let wellHeaderOptions: SelectOption[] = [];
@@ -409,7 +414,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
     function hideAllWells() {
         setSelectedWellUuids([]);
     }
-    function handleEnsembleSelectionChange(newEnsembleIdent: RegularEnsembleIdent | null) {
+    function handleEnsembleSelectionChange(newEnsembleIdent: string | null) {
         setSelectedEnsembleIdent(newEnsembleIdent);
         if (newEnsembleIdent) {
             syncHelper.publishValue(SyncSettingKey.ENSEMBLE, "global.syncValue.ensembles", [newEnsembleIdent]);

@@ -1,4 +1,5 @@
 import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
 
 import { atomWithQuery } from "jotai-tanstack-query";
@@ -12,8 +13,11 @@ export const gridModelInfosQueryAtom = atomWithQuery((get) => {
     const ensembleIdent = get(selectedEnsembleIdentAtom);
     const realizationNumber = get(selectedRealizationAtom);
 
-    const caseUuid = ensembleIdent?.getCaseUuid() ?? "";
-    const ensembleName = ensembleIdent?.getEnsembleName() ?? "";
+    let caseUuid = "";
+    let ensembleName = "";
+    if (ensembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(ensembleIdent));
+    }
 
     return {
         queryKey: ["getGridModelInfos", caseUuid, ensembleName, realizationNumber],
@@ -30,7 +34,7 @@ export const drilledWellboreHeadersQueryAtom = atomWithQuery((get) => {
 
     let fieldIdentifier: string | null = null;
     if (ensembleIdent) {
-        const ensemble = ensembleSet.findEnsemble(ensembleIdent);
+        const ensemble = ensembleSet.findRegularEnsemble(ensembleIdent);
         if (ensemble) {
             fieldIdentifier = ensemble.getFieldIdentifier();
         }

@@ -1,7 +1,6 @@
 import { FluidZone_api, InplaceVolumetricStatistic_api } from "@api";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { RegularEnsemble } from "@framework/RegularEnsemble";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { TableHeading, TableRow } from "@lib/components/Table/table";
 import { Column, ColumnType, Row, Table } from "@modules/_shared/InplaceVolumetrics/Table";
 import { sortResultNameStrings } from "@modules/_shared/InplaceVolumetrics/sortResultNames";
@@ -190,12 +189,9 @@ function formatEnsembleIdent(value: string | number | null, ensembleSet: Ensembl
     if (value === null) {
         return "-";
     }
-    const ensemble = ensembleSet.findEnsembleByIdentString(value.toString());
-    if (ensemble && ensemble instanceof RegularEnsemble) {
-        return makeDistinguishableEnsembleDisplayName(
-            RegularEnsembleIdent.fromString(value.toString()),
-            ensembleSet.getRegularEnsembleArray()
-        );
+    const ensemble = ensembleSet.findEnsemble(value.toString());
+    if (ensemble instanceof RegularEnsemble) {
+        return makeDistinguishableEnsembleDisplayName(value.toString(), ensembleSet.getRegularEnsembleArray());
     }
     return value.toString();
 }

@@ -1,36 +1,30 @@
 import { VectorRealizationData_api } from "@api";
 import { ChannelContentMetaData, DataGenerator } from "@framework/DataChannelTypes";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { simulationUnitReformat, simulationVectorDescription } from "@modules/_shared/reservoirSimulationStringUtils";
 
 import { VectorSpec } from "./typesAndEnums";
 
-// As of now, the publish to data channels only supports regular ensembles
-export interface RegularEnsembleVectorSpec extends VectorSpec {
-    ensembleIdent: RegularEnsembleIdent;
-}
-
 export function makeVectorGroupDataGenerator(
-    regularEnsembleVectorSpecification: RegularEnsembleVectorSpec,
+    regularEnsembleVectorSpecification: VectorSpec,
     regularEnsembleVectorSpecificationsAndRealizationData: {
-        vectorSpecification: RegularEnsembleVectorSpec;
+        vectorSpecification: VectorSpec;
         data: VectorRealizationData_api[];
     }[],
     activeTimestampUtcMs: number,
-    makeEnsembleDisplayName: (ensembleIdent: RegularEnsembleIdent) => string
+    makeEnsembleDisplayName: (ensembleIdent: string) => string
 ): DataGenerator {
     return () => {
         const data: { key: number; value: number }[] = [];
         let metaData: ChannelContentMetaData = {
             unit: "",
-            ensembleIdentString: "",
+            ensembleIdent: "",
             displayString: "",
         };
 
         const vector = regularEnsembleVectorSpecificationsAndRealizationData.find(
             (vec) =>
                 vec.vectorSpecification.vectorName === regularEnsembleVectorSpecification.vectorName &&
-                vec.vectorSpecification.ensembleIdent.equals(regularEnsembleVectorSpecification.ensembleIdent)
+                vec.vectorSpecification.ensembleIdent === regularEnsembleVectorSpecification.ensembleIdent
         );
 
         if (vector) {
@@ -45,7 +39,7 @@ export function makeVectorGroupDataGenerator(
             });
             metaData = {
                 unit,
-                ensembleIdentString: vector.vectorSpecification.ensembleIdent.toString(),
+                ensembleIdent: vector.vectorSpecification.ensembleIdent,
                 displayString: `${simulationVectorDescription(
                     vector.vectorSpecification.vectorName
                 )} (${makeEnsembleDisplayName(vector.vectorSpecification.ensembleIdent)})`,

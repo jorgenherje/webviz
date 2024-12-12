@@ -3,7 +3,6 @@ import React from "react";
 import { SurfaceAttributeType_api, SurfaceMetaSet_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleSet } from "@framework/EnsembleSet";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
@@ -48,10 +47,10 @@ export function SurfacesUncertaintyLayerSettingsComponent(
 
     const ensembleFilterFunc = useEnsembleRealizationFilterFunc(props.workbenchSession);
 
-    const surfaceDirectoryQuery = useSurfaceDirectoryQuery(
-        newSettings.ensembleIdent?.getCaseUuid(),
-        newSettings.ensembleIdent?.getEnsembleName()
-    );
+    const newEnsemble = newSettings.ensembleIdent
+        ? props.ensembleSet.findRegularEnsemble(newSettings.ensembleIdent)
+        : null;
+    const surfaceDirectoryQuery = useSurfaceDirectoryQuery(newEnsemble?.getCaseUuid(), newEnsemble?.getEnsembleName());
 
     const fixupEnsembleIdent = fixupSetting(
         "ensembleIdent",
@@ -120,7 +119,7 @@ export function SurfacesUncertaintyLayerSettingsComponent(
         [surfaceDirectoryQuery.isFetching, props.layer, newSettings]
     );
 
-    function handleEnsembleChange(ensembleIdent: RegularEnsembleIdent | null) {
+    function handleEnsembleChange(ensembleIdent: string | null) {
         setNewSettings((prev) => ({ ...prev, ensembleIdent }));
     }
 
@@ -262,7 +261,7 @@ export function useSurfaceDirectoryQuery(
         queryFn: () => apiService.surface.getRealizationSurfacesMetadata(caseUuid ?? "", ensembleName ?? ""),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
-        enabled: Boolean(caseUuid && ensembleName),
+        enabled: !!(caseUuid && ensembleName),
     });
 }
 

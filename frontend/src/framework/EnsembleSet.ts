@@ -1,7 +1,6 @@
 import { DeltaEnsemble } from "./DeltaEnsemble";
-import { DeltaEnsembleIdent } from "./DeltaEnsembleIdent";
+import { EnsembleIdent } from "./EnsembleIdent";
 import { RegularEnsemble } from "./RegularEnsemble";
-import { RegularEnsembleIdent } from "./RegularEnsembleIdent";
 
 export class EnsembleSet {
     private _regularEnsembleArray: RegularEnsemble[];
@@ -66,49 +65,39 @@ export class EnsembleSet {
      * @param ensembleIdent - The ensemble ident to check for, can be either a regular or delta ensemble ident.
      * @returns True if the ensemble set has the given ensemble ident.
      */
-    hasEnsemble(ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent): boolean {
-        if (ensembleIdent instanceof RegularEnsembleIdent) {
-            return this.findEnsemble(ensembleIdent) !== null;
-        }
-        if (ensembleIdent instanceof DeltaEnsembleIdent) {
-            return this.findEnsemble(ensembleIdent) !== null;
-        }
-        return false;
+    hasEnsemble(ensembleIdent: string): boolean {
+        return this.findEnsemble(ensembleIdent) !== null;
     }
 
     /**
-     * Find an ensemble in the set by its ensemble ident.
-     *
-     * @param ensembleIdent - The ensemble ident to search for.
-     * @returns The ensemble if found, otherwise null.
+     * Find an ensemble in the set by its ensemble ident string
      */
-    findEnsemble(ensembleIdent: RegularEnsembleIdent): RegularEnsemble | null;
-    findEnsemble(ensembleIdent: DeltaEnsembleIdent): DeltaEnsemble | null;
-    findEnsemble(ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent): RegularEnsemble | DeltaEnsemble | null;
-    findEnsemble(ensembleIdent: RegularEnsembleIdent | DeltaEnsembleIdent): RegularEnsemble | DeltaEnsemble | null {
-        if (ensembleIdent instanceof RegularEnsembleIdent) {
-            return this._regularEnsembleArray.find((ens) => ens.getIdent().equals(ensembleIdent)) ?? null;
+    findEnsemble(ensembleIdent: string): RegularEnsemble | DeltaEnsemble | null {
+        if (EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+            return this._regularEnsembleArray.find((ens) => ens.getIdent() === ensembleIdent) ?? null;
         }
-        if (ensembleIdent instanceof DeltaEnsembleIdent) {
-            return this._deltaEnsembleArray.find((ens) => ens.getIdent().equals(ensembleIdent)) ?? null;
+        if (EnsembleIdent.isValidDeltaEnsembleIdentString(ensembleIdent)) {
+            return this._deltaEnsembleArray.find((ens) => ens.getIdent() === ensembleIdent) ?? null;
         }
         return null;
     }
 
     /**
-     * Find an ensemble in the set by its ensemble ident string.
-     *
-     * @param ensembleIdentString - The ensemble ident string to search for.
-     * @returns The ensemble if found, otherwise null.
+     * Find regular ensemble by its ensemble ident string
      */
-    findEnsembleByIdentString(ensembleIdentString: string): RegularEnsemble | DeltaEnsemble | null {
-        if (RegularEnsembleIdent.isValidEnsembleIdentString(ensembleIdentString)) {
-            const ensembleIdent = RegularEnsembleIdent.fromString(ensembleIdentString);
-            return this.findEnsemble(ensembleIdent);
+    findRegularEnsemble(ensembleIdent: string): RegularEnsemble | null {
+        if (EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+            return this._regularEnsembleArray.find((ens) => ens.getIdent() === ensembleIdent) ?? null;
         }
-        if (DeltaEnsembleIdent.isValidDeltaEnsembleIdentString(ensembleIdentString)) {
-            const deltaEnsembleIdent = DeltaEnsembleIdent.fromString(ensembleIdentString);
-            return this.findEnsemble(deltaEnsembleIdent);
+        return null;
+    }
+
+    /**
+     * Find delta ensemble by its ensemble ident string
+     */
+    findDeltaEnsemble(ensembleIdent: string): DeltaEnsemble | null {
+        if (EnsembleIdent.isValidDeltaEnsembleIdentString(ensembleIdent)) {
+            return this._deltaEnsembleArray.find((ens) => ens.getIdent() === ensembleIdent) ?? null;
         }
         return null;
     }

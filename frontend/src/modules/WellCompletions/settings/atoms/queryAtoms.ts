@@ -1,4 +1,5 @@
 import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { RealizationSelection } from "@modules/WellCompletions/typesAndEnums";
 
 import { atomWithQuery } from "jotai-tanstack-query";
@@ -15,8 +16,11 @@ export const wellCompletionsQueryAtom = atomWithQuery((get) => {
     const userSelectedRealizationSelection = get(userSelectedRealizationSelectionAtom);
     const validRealizationNumbers = get(validRealizationNumbersAtom);
 
-    const caseUuid = selectedEnsembleIdent?.getCaseUuid();
-    const ensembleName = selectedEnsembleIdent?.getEnsembleName();
+    let caseUuid = "";
+    let ensembleName = "";
+    if (selectedEnsembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(selectedEnsembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(selectedEnsembleIdent));
+    }
 
     // Initialize with multiple realizations request
     let realizations: number | number[] | null = validRealizationNumbers;

@@ -1,16 +1,16 @@
 import { VectorRealizationData_api } from "@api";
 import { ChannelContentDefinition } from "@framework/DataChannelTypes";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ViewContext } from "@framework/ModuleContext";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
-import { isEnsembleIdentOfType } from "@framework/utils/ensembleIdentUtils";
 import { Interfaces } from "@modules/SimulationTimeSeries/interfaces";
+import { VectorSpec } from "@modules/SimulationTimeSeries/typesAndEnums";
 
 import { useAtomValue } from "jotai";
 
 import { useMakeEnsembleDisplayNameFunc } from "./useMakeEnsembleDisplayNameFunc";
 
 import { ChannelIds } from "../../channelDefs";
-import { RegularEnsembleVectorSpec, makeVectorGroupDataGenerator } from "../../dataGenerators";
+import { makeVectorGroupDataGenerator } from "../../dataGenerators";
 import {
     activeTimestampUtcMsAtom,
     loadedVectorSpecificationsAndRealizationDataAtom,
@@ -26,21 +26,16 @@ export function usePublishToDataChannels(viewContext: ViewContext<Interfaces>) {
 
     // Only publish regular ensemble data to the time series channel
     const regularEnsembleVectorSpecificationsAndRealizationData: {
-        vectorSpecification: RegularEnsembleVectorSpec;
+        vectorSpecification: VectorSpec;
         data: VectorRealizationData_api[];
     }[] = [];
     for (const elm of loadedVectorSpecificationsAndRealizationData) {
-        if (!isEnsembleIdentOfType(elm.vectorSpecification.ensembleIdent, RegularEnsembleIdent)) {
+        if (!EnsembleIdent.isValidRegularEnsembleIdentString(elm.vectorSpecification.ensembleIdent)) {
             continue;
         }
 
-        const regularEnsembleVectorSpec: RegularEnsembleVectorSpec = {
-            ...elm.vectorSpecification,
-            ensembleIdent: elm.vectorSpecification.ensembleIdent,
-        };
-
         regularEnsembleVectorSpecificationsAndRealizationData.push({
-            vectorSpecification: regularEnsembleVectorSpec,
+            vectorSpecification: elm.vectorSpecification,
             data: elm.data,
         });
     }

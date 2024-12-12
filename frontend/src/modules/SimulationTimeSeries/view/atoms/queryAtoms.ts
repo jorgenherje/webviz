@@ -1,9 +1,8 @@
 import { Frequency_api, Observations_api } from "@api";
 import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ValidEnsembleRealizationsFunctionAtom } from "@framework/GlobalAtoms";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { atomWithQueries } from "@framework/utils/atomUtils";
-import { isEnsembleIdentOfType } from "@framework/utils/ensembleIdentUtils";
 import { EnsembleVectorObservationDataMap, VisualizationMode } from "@modules/SimulationTimeSeries/typesAndEnums";
 import { QueryObserverResult } from "@tanstack/react-query";
 
@@ -30,62 +29,62 @@ export const vectorDataQueriesAtom = atomWithQueries((get) => {
 
     const queries = vectorSpecifications.map((item) => {
         // Regular Ensemble
-        if (isEnsembleIdentOfType(item.ensembleIdent, RegularEnsembleIdent)) {
+        if (EnsembleIdent.isValidRegularEnsembleIdentString(item.ensembleIdent)) {
             const realizations = [...validEnsembleRealizationsFunction(item.ensembleIdent)];
-            const vectorSpecification = {
-                ...item,
-                ensembleIdent: item.ensembleIdent,
-            };
+            const { caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(
+                item.ensembleIdent
+            );
 
             return () => ({
                 queryKey: [
                     "getRealizationsVectorData",
-                    vectorSpecification.ensembleIdent.getCaseUuid(),
-                    vectorSpecification.ensembleIdent.getEnsembleName(),
-                    vectorSpecification.vectorName,
+                    caseUuid,
+                    ensembleName,
+                    item.vectorName,
                     resampleFrequency,
                     realizations,
                 ],
                 queryFn: () =>
                     apiService.timeseries.getRealizationsVectorData(
-                        vectorSpecification.ensembleIdent.getCaseUuid() ?? "",
-                        vectorSpecification.ensembleIdent.getEnsembleName() ?? "",
-                        vectorSpecification.vectorName ?? "",
+                        caseUuid,
+                        ensembleName,
+                        item.vectorName ?? "",
                         resampleFrequency,
                         realizations
                     ),
                 staleTime: STALE_TIME,
                 gcTime: CACHE_TIME,
-                enabled: !!(
-                    enabled &&
-                    vectorSpecification.vectorName &&
-                    vectorSpecification.ensembleIdent.getCaseUuid() &&
-                    vectorSpecification.ensembleIdent.getEnsembleName()
-                ),
+                enabled: !!(enabled && item.vectorName && caseUuid && ensembleName),
             });
         }
 
         // Delta Ensemble
+        if (!EnsembleIdent.isValidDeltaEnsembleIdentString(item.ensembleIdent)) {
+            throw new Error(`Invalid delta ensemble ident string: ${item.ensembleIdent}`);
+        }
         const realizations = [...validEnsembleRealizationsFunction(item.ensembleIdent)];
-        const vectorSpecification = { ...item, ensembleIdent: item.ensembleIdent };
+        const { compareEnsemble, referenceEnsemble } = EnsembleIdent.deltaEnsembleCaseUuidsAndNamesFromString(
+            item.ensembleIdent
+        );
+
         return () => ({
             queryKey: [
                 "getDeltaEnsembleRealizationsVectorData",
-                vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getCaseUuid(),
-                vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getEnsembleName(),
-                vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getCaseUuid(),
-                vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getEnsembleName(),
-                vectorSpecification.vectorName,
+                compareEnsemble.caseUuid,
+                compareEnsemble.ensembleName,
+                referenceEnsemble.caseUuid,
+                referenceEnsemble.ensembleName,
+                item.vectorName,
                 resampleFrequency,
                 realizations,
             ],
             queryFn: () =>
                 apiService.timeseries.getDeltaEnsembleRealizationsVectorData(
-                    vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getCaseUuid(),
-                    vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getEnsembleName(),
-                    vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getCaseUuid(),
-                    vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getEnsembleName(),
-                    vectorSpecification.vectorName ?? "",
+                    compareEnsemble.caseUuid,
+                    compareEnsemble.ensembleName,
+                    referenceEnsemble.caseUuid,
+                    referenceEnsemble.ensembleName,
+                    item.vectorName ?? "",
                     resampleFrequency ?? Frequency_api.YEARLY,
                     realizations
                 ),
@@ -94,11 +93,11 @@ export const vectorDataQueriesAtom = atomWithQueries((get) => {
             enabled: !!(
                 enabled &&
                 resampleFrequency &&
-                vectorSpecification.vectorName &&
-                vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getCaseUuid() &&
-                vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getEnsembleName() &&
-                vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getCaseUuid() &&
-                vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getEnsembleName()
+                item.vectorName &&
+                compareEnsemble.caseUuid &&
+                compareEnsemble.ensembleName &&
+                referenceEnsemble.caseUuid &&
+                referenceEnsemble.ensembleName
             ),
         });
     });
@@ -121,62 +120,63 @@ export const vectorStatisticsQueriesAtom = atomWithQueries((get) => {
 
     const queries = vectorSpecifications.map((item) => {
         // Regular Ensemble
-        if (isEnsembleIdentOfType(item.ensembleIdent, RegularEnsembleIdent)) {
+        if (EnsembleIdent.isValidRegularEnsembleIdentString(item.ensembleIdent)) {
             const realizations = [...validEnsembleRealizationsFunction(item.ensembleIdent)];
-            const vectorSpecification = {
-                ...item,
-                ensembleIdent: item.ensembleIdent,
-            };
+            const { caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(
+                item.ensembleIdent
+            );
+
             return () => ({
                 queryKey: [
                     "getStatisticalVectorData",
-                    vectorSpecification.ensembleIdent.getCaseUuid(),
-                    vectorSpecification.ensembleIdent.getEnsembleName(),
-                    vectorSpecification.vectorName,
+                    caseUuid,
+                    ensembleName,
+                    item.vectorName,
                     resampleFrequency,
                     realizations,
                 ],
                 queryFn: () =>
                     apiService.timeseries.getStatisticalVectorData(
-                        vectorSpecification.ensembleIdent.getCaseUuid() ?? "",
-                        vectorSpecification.ensembleIdent.getEnsembleName() ?? "",
-                        vectorSpecification.vectorName ?? "",
+                        caseUuid,
+                        ensembleName,
+                        item.vectorName ?? "",
                         resampleFrequency ?? Frequency_api.MONTHLY,
                         undefined,
                         realizations
                     ),
                 staleTime: STALE_TIME,
                 gcTime: CACHE_TIME,
-                enabled: !!(
-                    enabled &&
-                    vectorSpecification.vectorName &&
-                    vectorSpecification.ensembleIdent.getCaseUuid() &&
-                    vectorSpecification.ensembleIdent.getEnsembleName()
-                ),
+                enabled: !!(enabled && item.vectorName && caseUuid && ensembleName),
             });
         }
 
         // Delta Ensemble
+        if (!EnsembleIdent.isValidDeltaEnsembleIdentString(item.ensembleIdent)) {
+            throw new Error(`Invalid delta ensemble ident string: ${item.ensembleIdent}`);
+        }
         const realizations = [...validEnsembleRealizationsFunction(item.ensembleIdent)];
-        const vectorSpecification = { ...item, ensembleIdent: item.ensembleIdent };
+        const { compareEnsemble, referenceEnsemble } = EnsembleIdent.deltaEnsembleCaseUuidsAndNamesFromString(
+            item.ensembleIdent
+        );
+
         return () => ({
             queryKey: [
                 "getDeltaEnsembleStatisticalVectorData",
-                vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getCaseUuid(),
-                vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getEnsembleName(),
-                vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getCaseUuid(),
-                vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getEnsembleName(),
-                vectorSpecification.vectorName,
+                compareEnsemble.caseUuid,
+                compareEnsemble.ensembleName,
+                referenceEnsemble.caseUuid,
+                referenceEnsemble.ensembleName,
+                item.vectorName,
                 resampleFrequency,
                 realizations,
             ],
             queryFn: () =>
                 apiService.timeseries.getDeltaEnsembleStatisticalVectorData(
-                    vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getCaseUuid(),
-                    vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getEnsembleName(),
-                    vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getCaseUuid(),
-                    vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getEnsembleName(),
-                    vectorSpecification.vectorName ?? "",
+                    compareEnsemble.caseUuid,
+                    compareEnsemble.ensembleName,
+                    referenceEnsemble.caseUuid,
+                    referenceEnsemble.ensembleName,
+                    item.vectorName,
                     resampleFrequency ?? Frequency_api.MONTHLY,
                     undefined,
                     realizations
@@ -186,11 +186,11 @@ export const vectorStatisticsQueriesAtom = atomWithQueries((get) => {
             enabled: !!(
                 enabled &&
                 resampleFrequency &&
-                vectorSpecification.vectorName &&
-                vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getCaseUuid() &&
-                vectorSpecification.ensembleIdent.getCompareEnsembleIdent().getEnsembleName() &&
-                vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getCaseUuid() &&
-                vectorSpecification.ensembleIdent.getReferenceEnsembleIdent().getEnsembleName()
+                item.vectorName &&
+                compareEnsemble.caseUuid &&
+                compareEnsemble.ensembleName &&
+                referenceEnsemble.caseUuid &&
+                referenceEnsemble.ensembleName
             ),
         });
     });
@@ -207,34 +207,20 @@ export const regularEnsembleHistoricalVectorDataQueriesAtom = atomWithQueries((g
     const enabled = regularEnsembleVectorSpecifications.some((elm) => elm.hasHistoricalVector);
 
     const queries = regularEnsembleVectorSpecifications.map((item) => {
-        const vectorSpecification = {
-            ...item,
-            ensembleIdent: item.ensembleIdent as RegularEnsembleIdent,
-        };
+        const { caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(item.ensembleIdent);
 
         return () => ({
-            queryKey: [
-                "getHistoricalVectorData",
-                vectorSpecification.ensembleIdent.getCaseUuid(),
-                vectorSpecification.ensembleIdent.getEnsembleName(),
-                vectorSpecification.vectorName,
-                resampleFrequency,
-            ],
+            queryKey: ["getHistoricalVectorData", caseUuid, ensembleName, item.vectorName, resampleFrequency],
             queryFn: () =>
                 apiService.timeseries.getHistoricalVectorData(
-                    vectorSpecification.ensembleIdent.getCaseUuid() ?? "",
-                    vectorSpecification.ensembleIdent.getEnsembleName() ?? "",
-                    vectorSpecification.vectorName ?? "",
+                    caseUuid,
+                    ensembleName,
+                    item.vectorName,
                     resampleFrequency ?? Frequency_api.MONTHLY
                 ),
             staleTime: STALE_TIME,
             gcTime: CACHE_TIME,
-            enabled: !!(
-                enabled &&
-                vectorSpecification.vectorName &&
-                vectorSpecification.ensembleIdent.getCaseUuid() &&
-                vectorSpecification.ensembleIdent.getEnsembleName()
-            ),
+            enabled: !!(enabled && item.vectorName && caseUuid && ensembleName),
         });
     });
 
@@ -247,21 +233,27 @@ export const vectorObservationsQueriesAtom = atomWithQueries((get) => {
     const showObservations = get(showObservationsAtom);
     const vectorSpecifications = get(vectorSpecificationsAtom);
 
-    const uniqueEnsembleIdents = [
+    // Only regular ensemble idents (how to "see" this around in the module?)
+    const uniqueRegularEnsembleIdents: { ident: string; caseUuid: string }[] = [
         ...new Set(
             vectorSpecifications
-                ?.filter((item) => item.ensembleIdent instanceof RegularEnsembleIdent)
-                .map((item) => item.ensembleIdent as RegularEnsembleIdent) ?? []
+                ?.filter((item) => EnsembleIdent.isValidRegularEnsembleIdentString(item.ensembleIdent))
+                .map((item) => {
+                    return {
+                        ident: item.ensembleIdent,
+                        caseUuid: EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(item.ensembleIdent).caseUuid,
+                    };
+                }) ?? []
         ),
     ];
 
-    const queries = uniqueEnsembleIdents.map((item) => {
+    const queries = uniqueRegularEnsembleIdents.map((item) => {
         return () => ({
-            queryKey: ["getObservations", item.getCaseUuid()],
-            queryFn: () => apiService.observations.getObservations(item.getCaseUuid() ?? ""),
+            queryKey: ["getObservations", item.caseUuid],
+            queryFn: () => apiService.observations.getObservations(item.caseUuid ?? ""),
             staleTime: STALE_TIME,
             gcTime: CACHE_TIME,
-            enabled: !!(showObservations && item.getCaseUuid()),
+            enabled: !!(showObservations && item.caseUuid),
         });
     });
 
@@ -274,7 +266,7 @@ export const vectorObservationsQueriesAtom = atomWithQueries((get) => {
             }
 
             results.forEach((result, index) => {
-                const ensembleIdent = uniqueEnsembleIdents.at(index);
+                const ensembleIdent = uniqueRegularEnsembleIdents.at(index)?.ident;
                 if (!ensembleIdent) return;
 
                 const ensembleVectorSpecifications = vectorSpecifications.filter(

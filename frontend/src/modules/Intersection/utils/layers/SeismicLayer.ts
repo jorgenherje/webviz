@@ -1,7 +1,7 @@
 import { SeismicFenceData_api } from "@api";
 import { SeismicInfo, findIndexOfSample, getSeismicInfo } from "@equinor/esv-intersection";
 import { apiService } from "@framework/ApiService";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultContinuousDivergingColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { Vec2, normalizeVec2, point2Distance } from "@lib/utils/vec2";
@@ -51,7 +51,7 @@ const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
 export type SeismicLayerSettings = {
-    ensembleIdent: RegularEnsembleIdent | null;
+    ensembleIdent: string | null;
     realizationNum: number | null;
     polyline: {
         polylineUtmXy: number[];
@@ -330,10 +330,21 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             yPoints.push(point[1]);
         }
 
+        let caseUuid: string | null = null;
+        let ensembleName: string | null = null;
+        if (
+            this._settings.ensembleIdent &&
+            EnsembleIdent.isValidRegularEnsembleIdentString(this._settings.ensembleIdent)
+        ) {
+            ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(
+                this._settings.ensembleIdent
+            ));
+        }
+
         const queryKey = [
             "postGetSeismicFence",
-            this._settings.ensembleIdent?.getCaseUuid() ?? "",
-            this._settings.ensembleIdent?.getEnsembleName() ?? "",
+            caseUuid ?? "",
+            ensembleName ?? "",
             this._settings.realizationNum ?? 0,
             this._settings.attribute ?? "",
             this._settings.dateOrInterval ?? "",
@@ -350,8 +361,8 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
                 queryKey,
                 queryFn: () =>
                     apiService.seismic.postGetSeismicFence(
-                        this._settings.ensembleIdent?.getCaseUuid() ?? "",
-                        this._settings.ensembleIdent?.getEnsembleName() ?? "",
+                        caseUuid ?? "",
+                        ensembleName ?? "",
                         this._settings.realizationNum ?? 0,
                         this._settings.attribute ?? "",
                         this._settings.dateOrInterval ?? "",

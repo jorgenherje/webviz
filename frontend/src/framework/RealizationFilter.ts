@@ -1,7 +1,6 @@
 import { isEqual } from "lodash";
 
 import { DeltaEnsemble } from "./DeltaEnsemble";
-import { DeltaEnsembleIdent } from "./DeltaEnsembleIdent";
 import {
     ContinuousParameter,
     DiscreteParameter,
@@ -11,7 +10,6 @@ import {
     ParameterType,
 } from "./EnsembleParameters";
 import { RegularEnsemble } from "./RegularEnsemble";
-import { RegularEnsembleIdent } from "./RegularEnsembleIdent";
 import {
     DiscreteParameterValueSelection,
     IncludeExcludeFilter,
@@ -67,7 +65,7 @@ export class RealizationFilter {
         this._parameterIdentStringToValueSelectionMap = null;
     }
 
-    getAssignedEnsembleIdent(): RegularEnsembleIdent | DeltaEnsembleIdent {
+    getAssignedEnsembleIdentString(): string {
         return this._assignedEnsemble.getIdent();
     }
 

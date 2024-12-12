@@ -1,5 +1,4 @@
 import { PvtData_api } from "@api";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { Size2D } from "@lib/utils/geometry";
 import { Figure, makeSubplots } from "@modules/_shared/Figure";
@@ -25,12 +24,9 @@ export class PvtPlotBuilder {
     private readonly _pvtDataAccessor: PvtDataAccessor;
     private _figure: Figure | null = null;
     private _numPlots = 0;
-    private readonly _makeEnsembleDisplayNameFunc: (ensemble: RegularEnsembleIdent) => string;
+    private readonly _makeEnsembleDisplayNameFunc: (ensembleIdent: string) => string;
 
-    constructor(
-        pvtDataAccessor: PvtDataAccessor,
-        makeEnsembleDisplayNameFunc: (ensemble: RegularEnsembleIdent) => string
-    ) {
+    constructor(pvtDataAccessor: PvtDataAccessor, makeEnsembleDisplayNameFunc: (ensemble: string) => string) {
         this._pvtDataAccessor = pvtDataAccessor;
         this._makeEnsembleDisplayNameFunc = makeEnsembleDisplayNameFunc;
     }
@@ -293,7 +289,7 @@ export class PvtPlotBuilder {
         ratios: readonly number[],
         pvtNum: number,
         phase: PhaseType,
-        ensembleIdent: RegularEnsembleIdent,
+        ensembleIdent: string,
         realization: number
     ): string[] {
         const nameY = PRESSURE_DEPENDENT_VARIABLE_TO_DISPLAY_NAME[dependentVariable];

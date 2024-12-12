@@ -2,8 +2,8 @@ import React from "react";
 
 import { SurfaceAttributeType_api, SurfaceMetaSet_api } from "@api";
 import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
@@ -41,11 +41,7 @@ export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsCompone
     }
 
     const ensembleFilterFunc = useEnsembleRealizationFilterFunc(props.workbenchSession);
-
-    const surfaceDirectoryQuery = useRealizationSurfacesMetadataQuery(
-        newSettings.ensembleIdent?.getCaseUuid(),
-        newSettings.ensembleIdent?.getEnsembleName()
-    );
+    const surfaceDirectoryQuery = useRealizationSurfacesMetadataQuery(newSettings.ensembleIdent);
 
     const fixupEnsembleIdent = fixupSetting(
         "ensembleIdent",
@@ -119,7 +115,7 @@ export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsCompone
         [surfaceDirectoryQuery.isFetching, props.layer, newSettings]
     );
 
-    function handleEnsembleChange(ensembleIdent: RegularEnsembleIdent | null) {
+    function handleEnsembleChange(ensembleIdent: string | null) {
         setNewSettings((prev) => ({ ...prev, ensembleIdent }));
     }
 
@@ -251,13 +247,16 @@ function makeSurfaceNameOptions(surfaceNames: string[]): DropdownOption[] {
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
-export function useRealizationSurfacesMetadataQuery(
-    caseUuid: string | undefined,
-    ensembleName: string | undefined
-): UseQueryResult<SurfaceMetaSet_api> {
+export function useRealizationSurfacesMetadataQuery(ensembleIdent: string | null): UseQueryResult<SurfaceMetaSet_api> {
+    let caseUuid = "";
+    let ensembleName = "";
+    if (ensembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(ensembleIdent));
+    }
+
     return useQuery({
         queryKey: ["getRealizationSurfacesMetadata", caseUuid, ensembleName],
-        queryFn: () => apiService.surface.getRealizationSurfacesMetadata(caseUuid ?? "", ensembleName ?? ""),
+        queryFn: () => apiService.surface.getRealizationSurfacesMetadata(caseUuid, ensembleName),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
         enabled: Boolean(caseUuid && ensembleName),

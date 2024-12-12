@@ -1,5 +1,3 @@
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
-
 import { TableCollection } from "./TableCollection";
 
 export enum ColumnType {
@@ -148,10 +146,7 @@ export class Table {
         return row;
     }
 
-    filterRowsByColumn(
-        columnName: string,
-        predicate: (value: string | number | RegularEnsembleIdent) => boolean
-    ): Row[] {
+    filterRowsByColumn(columnName: string, predicate: (value: string | number) => boolean): Row[] {
         const columnIndex = this._columns.findIndex((column) => column.getName() === columnName);
 
         if (columnIndex === -1) {

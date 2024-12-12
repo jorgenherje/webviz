@@ -40,7 +40,7 @@ describe("RealizationFilterSet tests", () => {
 
         const wantedEnsembleIdent = regularEnsembleArray[0].getIdent();
         const realizationFilter = REALIZATION_FILTER_SET.getRealizationFilterForEnsembleIdent(wantedEnsembleIdent);
-        expect(realizationFilter.getAssignedEnsembleIdent().equals(wantedEnsembleIdent)).toBe(true);
+        expect(realizationFilter.getAssignedEnsembleIdentString()).toBe(wantedEnsembleIdent);
     });
 
     test("should return filter for delta ensemble", () => {
@@ -49,7 +49,7 @@ describe("RealizationFilterSet tests", () => {
 
         const wantedEnsembleIdent = deltaEnsembleArray[0].getIdent();
         const realizationFilter = REALIZATION_FILTER_SET.getRealizationFilterForEnsembleIdent(wantedEnsembleIdent);
-        expect(realizationFilter.getAssignedEnsembleIdent().equals(wantedEnsembleIdent)).toBe(true);
+        expect(realizationFilter.getAssignedEnsembleIdentString()).toBe(wantedEnsembleIdent);
     });
 
     test("should throw error for non-existing regular ensemble", () => {
@@ -78,7 +78,7 @@ describe("RealizationFilterSet tests", () => {
 
         const wantedDeltaEnsembleIdent = deltaEnsembleArray[0].getIdent();
         let realizationFilter = REALIZATION_FILTER_SET.getRealizationFilterForEnsembleIdent(wantedDeltaEnsembleIdent);
-        expect(realizationFilter.getAssignedEnsembleIdent().equals(wantedDeltaEnsembleIdent)).toBe(true);
+        expect(realizationFilter.getAssignedEnsembleIdentString()).toBe(wantedDeltaEnsembleIdent);
 
         // Add non-existing regular ensemble
         const newRegularEnsembleArray = [...regularEnsembleArray, nonExistingRegularEnsemble];
@@ -87,7 +87,7 @@ describe("RealizationFilterSet tests", () => {
 
         const wantedEnsembleIdent = nonExistingRegularEnsemble.getIdent();
         realizationFilter = REALIZATION_FILTER_SET.getRealizationFilterForEnsembleIdent(wantedEnsembleIdent);
-        expect(realizationFilter.getAssignedEnsembleIdent().equals(wantedEnsembleIdent)).toBe(true);
+        expect(realizationFilter.getAssignedEnsembleIdentString()).toBe(wantedEnsembleIdent);
 
         // Delta ensemble should no longer be in the filter set
         expect(() =>

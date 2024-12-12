@@ -1,7 +1,7 @@
 import { DeltaEnsemble } from "@framework/DeltaEnsemble";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { RegularEnsemble } from "@framework/RegularEnsemble";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 
 import { describe, expect, test } from "vitest";
 
@@ -27,7 +27,9 @@ describe("EnsembleSet tests", () => {
         expect(ensSet.getDeltaEnsembleArray().length).toBe(0);
         expect(ensSet.getEnsembleArray().length).toBe(0);
         expect(
-            ensSet.findEnsemble(new RegularEnsembleIdent("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1"))
+            ensSet.findEnsemble(
+                EnsembleIdent.createRegularEnsembleIdentString("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1")
+            )
         ).toBeNull();
     });
 
@@ -78,13 +80,21 @@ describe("EnsembleSet tests", () => {
         expect(ensSet.hasAnyRegularEnsembles()).toBe(true);
         expect(ensSet.hasAnyDeltaEnsembles()).toBe(false);
         expect(ensSet.hasAnyEnsembles()).toBe(true);
-        expect(ensSet.hasEnsemble(new RegularEnsembleIdent("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1"))).toBe(true);
-        expect(ensSet.hasEnsemble(new RegularEnsembleIdent("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens99"))).toBe(
-            false
-        );
-        expect(ensSet.hasEnsemble(new RegularEnsembleIdent("99999999-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1"))).toBe(
-            false
-        );
+        expect(
+            ensSet.hasEnsemble(
+                EnsembleIdent.createRegularEnsembleIdentString("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1")
+            )
+        ).toBe(true);
+        expect(
+            ensSet.hasEnsemble(
+                EnsembleIdent.createRegularEnsembleIdentString("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens99")
+            )
+        ).toBe(false);
+        expect(
+            ensSet.hasEnsemble(
+                EnsembleIdent.createRegularEnsembleIdentString("99999999-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1")
+            )
+        ).toBe(false);
     });
 
     test("has by DeltaEnsembleIdent", () => {
@@ -101,24 +111,20 @@ describe("EnsembleSet tests", () => {
         const ensSet = new EnsembleSet(regularEnsembleArray, deltaEnsembleArray);
         expect(ensSet.hasAnyRegularEnsembles()).toBe(true);
         expect(
-            ensSet.findEnsemble(new RegularEnsembleIdent("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1"))
+            ensSet.findEnsemble(
+                EnsembleIdent.createRegularEnsembleIdentString("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1")
+            )
         ).toBeInstanceOf(RegularEnsemble);
         expect(
-            ensSet.findEnsemble(new RegularEnsembleIdent("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens99"))
+            ensSet.findEnsemble(
+                EnsembleIdent.createRegularEnsembleIdentString("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens99")
+            )
         ).toBeNull();
         expect(
-            ensSet.findEnsemble(new RegularEnsembleIdent("99999999-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1"))
+            ensSet.findEnsemble(
+                EnsembleIdent.createRegularEnsembleIdentString("99999999-aaaa-4444-aaaa-aaaaaaaaaaaa", "ens1")
+            )
         ).toBeNull();
-    });
-
-    test("find by EnsembleIdentString", () => {
-        const ensSet = new EnsembleSet(regularEnsembleArray, deltaEnsembleArray);
-        expect(ensSet.hasAnyRegularEnsembles()).toBe(true);
-        expect(ensSet.findEnsembleByIdentString("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa::ens1")).toBeInstanceOf(
-            RegularEnsemble
-        );
-        expect(ensSet.findEnsembleByIdentString("11111111-aaaa-4444-aaaa-aaaaaaaaaaaa::ens99")).toBeNull();
-        expect(ensSet.findEnsembleByIdentString("99999999-aaaa-4444-aaaa-aaaaaaaaaaaa::ens1")).toBeNull();
     });
 
     test("find by DeltaEnsembleIdent", () => {
@@ -129,21 +135,9 @@ describe("EnsembleSet tests", () => {
         expect(ensSet.findEnsemble(nonExistingDeltaEnsemble.getIdent())).toBeNull();
     });
 
-    test("find by DeltaEnsembleIdentString", () => {
+    test("find by ensemble ident containing invalid UUID", () => {
         const ensSet = new EnsembleSet(regularEnsembleArray, deltaEnsembleArray);
-        expect(ensSet.hasAnyDeltaEnsembles()).toBe(true);
-        const firstString = deltaEnsembleArray[0].getIdent().toString();
-        const secondString = deltaEnsembleArray[1].getIdent().toString();
-        const invalidDeltaEnsembleIdentString = nonExistingDeltaEnsemble.getIdent().toString();
-        expect(ensSet.findEnsembleByIdentString(firstString)).toBeInstanceOf(DeltaEnsemble);
-        expect(ensSet.findEnsembleByIdentString(secondString)).toBeInstanceOf(DeltaEnsemble);
-        expect(ensSet.findEnsembleByIdentString(invalidDeltaEnsembleIdentString)).toBeNull();
-    });
-
-    test("find by EnsembleIdentString containing invalid UUID", () => {
-        const ensSet = new EnsembleSet(regularEnsembleArray, deltaEnsembleArray);
-        expect(ensSet.findEnsembleByIdentString("")).toBeNull();
-        expect(ensSet.findEnsembleByIdentString("")).toBeNull();
-        expect(ensSet.findEnsembleByIdentString("QQQQQQQQ-aaaa-4444-aaaa-aaaaaaaaaaaa::ens99")).toBeNull();
+        expect(ensSet.findEnsemble("")).toBeNull();
+        expect(ensSet.findEnsemble("QQQQQQQQ-aaaa-4444-aaaa-aaaaaaaaaaaa::ens99")).toBeNull();
     });
 });

@@ -2,7 +2,6 @@ import React from "react";
 
 import { SurfaceStatisticFunction_api } from "@api";
 import { ModuleSettingsProps } from "@framework/Module";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
@@ -34,7 +33,7 @@ const SurfaceTimeTypeEnumToStringMapping = {
 //-----------------------------------------------------------------------------------------------------------
 export function MapSettings(props: ModuleSettingsProps<Interfaces>) {
     const ensembleSet = useEnsembleSet(props.workbenchSession);
-    const [selectedEnsembleIdent, setSelectedEnsembleIdent] = React.useState<RegularEnsembleIdent | null>(null);
+    const [selectedEnsembleIdent, setSelectedEnsembleIdent] = React.useState<string | null>(null);
     const [timeType, setTimeType] = React.useState<SurfaceTimeType>(SurfaceTimeType.None);
 
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
@@ -54,11 +53,13 @@ export function MapSettings(props: ModuleSettingsProps<Interfaces>) {
 
     const candidateEnsembleIdent = maybeAssignFirstSyncedEnsemble(selectedEnsembleIdent, syncedValueEnsembles);
     const computedEnsembleIdent = fixupEnsembleIdent(candidateEnsembleIdent, ensembleSet);
+
+    const computedEnsemble = computedEnsembleIdent ? ensembleSet.findRegularEnsemble(computedEnsembleIdent) : null;
     const realizationSurfacesMetaQuery = useRealizationSurfacesMetadataQuery(
-        computedEnsembleIdent?.getCaseUuid(),
-        computedEnsembleIdent?.getEnsembleName()
+        computedEnsemble?.getCaseUuid(),
+        computedEnsemble?.getEnsembleName()
     );
-    const observedSurfacesMetaQuery = useObservedSurfacesMetadataQuery(computedEnsembleIdent?.getCaseUuid());
+    const observedSurfacesMetaQuery = useObservedSurfacesMetadataQuery(computedEnsemble?.getCaseUuid());
 
     usePropagateApiErrorToStatusWriter(realizationSurfacesMetaQuery, statusWriter);
     usePropagateApiErrorToStatusWriter(observedSurfacesMetaQuery, statusWriter);
@@ -87,7 +88,7 @@ export function MapSettings(props: ModuleSettingsProps<Interfaces>) {
     const computedSurfaceAttribute = fixedSurfSpec.surfaceAttribute;
     const computedTimeOrInterval = fixedSurfSpec.timeOrInterval;
 
-    if (computedEnsembleIdent && !computedEnsembleIdent.equals(selectedEnsembleIdent)) {
+    if (computedEnsembleIdent && computedEnsembleIdent !== selectedEnsembleIdent) {
         setSelectedEnsembleIdent(computedEnsembleIdent);
     }
     if (computedSurfaceName && computedSurfaceName !== selectedSurfaceName) {
@@ -128,8 +129,7 @@ export function MapSettings(props: ModuleSettingsProps<Interfaces>) {
         setSurfaceAddress(surfaceAddress);
     });
 
-    function handleEnsembleSelectionChange(newEnsembleIdent: RegularEnsembleIdent | null) {
-        console.debug("handleEnsembleSelectionChange()");
+    function handleEnsembleSelectionChange(newEnsembleIdent: string | null) {
         setSelectedEnsembleIdent(newEnsembleIdent);
         if (newEnsembleIdent) {
             syncHelper.publishValue(SyncSettingKey.ENSEMBLE, "global.syncValue.ensembles", [newEnsembleIdent]);

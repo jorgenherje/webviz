@@ -1,4 +1,5 @@
 import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 
 import { atomWithQuery } from "jotai-tanstack-query";
 
@@ -10,31 +11,26 @@ const CACHE_TIME = 60 * 1000;
 export const vfpTableQueryAtom = atomWithQuery((get) => {
     const selectedEnsembleIdent = get(selectedEnsembleIdentAtom);
     const selectedRealizationNumber = get(selectedRealizationNumberAtom);
-    const selectedVfpTableName = get(selectedVfpTableNameAtom)
+    const selectedVfpTableName = get(selectedVfpTableNameAtom);
+
+    let caseUuid: string | null = null;
+    let ensembleName: string | null = null;
+    if (selectedEnsembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(selectedEnsembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(selectedEnsembleIdent));
+    }
 
     const query = {
-        queryKey: [
-            "getVfpTable",
-            selectedEnsembleIdent?.getCaseUuid(),
-            selectedEnsembleIdent?.getEnsembleName(),
-            selectedRealizationNumber,
-            selectedVfpTableName,
-        ],
+        queryKey: ["getVfpTable", caseUuid, ensembleName, selectedRealizationNumber, selectedVfpTableName],
         queryFn: () =>
             apiService.vfp.getVfpTable(
-                selectedEnsembleIdent?.getCaseUuid() ?? "",
-                selectedEnsembleIdent?.getEnsembleName() ?? "",
+                caseUuid ?? "",
+                ensembleName ?? "",
                 selectedRealizationNumber ?? 0,
-                selectedVfpTableName ?? "",
+                selectedVfpTableName ?? ""
             ),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
-        enabled: !!(
-            selectedEnsembleIdent?.getCaseUuid() &&
-            selectedEnsembleIdent?.getEnsembleName() &&
-            selectedRealizationNumber !== null &&
-            selectedVfpTableName
-        ),
+        enabled: !!(caseUuid && ensembleName && selectedRealizationNumber !== null && selectedVfpTableName),
     };
     return query;
 });
@@ -43,26 +39,19 @@ export const vfpTableNamesQueryAtom = atomWithQuery((get) => {
     const selectedEnsembleIdent = get(selectedEnsembleIdentAtom);
     const selectedRealizationNumber = get(selectedRealizationNumberAtom);
 
+    let caseUuid: string | null = null;
+    let ensembleName: string | null = null;
+    if (selectedEnsembleIdent && EnsembleIdent.isValidRegularEnsembleIdentString(selectedEnsembleIdent)) {
+        ({ caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(selectedEnsembleIdent));
+    }
+
     const query = {
-        queryKey: [
-            "getVfpTableNames",
-            selectedEnsembleIdent?.getCaseUuid(),
-            selectedEnsembleIdent?.getEnsembleName(),
-            selectedRealizationNumber,
-        ],
+        queryKey: ["getVfpTableNames", caseUuid, ensembleName, selectedRealizationNumber],
         queryFn: () =>
-            apiService.vfp.getVfpTableNames(
-                selectedEnsembleIdent?.getCaseUuid() ?? "",
-                selectedEnsembleIdent?.getEnsembleName() ?? "",
-                selectedRealizationNumber ?? 0,
-            ),
+            apiService.vfp.getVfpTableNames(caseUuid ?? "", ensembleName ?? "", selectedRealizationNumber ?? 0),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
-        enabled: !!(
-            selectedEnsembleIdent?.getCaseUuid() &&
-            selectedEnsembleIdent?.getEnsembleName() &&
-            selectedRealizationNumber !== null
-        ),
+        enabled: !!(caseUuid && ensembleName && selectedRealizationNumber !== null),
     };
     return query;
 });

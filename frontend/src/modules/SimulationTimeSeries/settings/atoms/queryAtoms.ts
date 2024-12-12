@@ -1,8 +1,6 @@
 import { apiService } from "@framework/ApiService";
-import { EnsembleSetAtom } from "@framework/GlobalAtoms";
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { atomWithQueries } from "@framework/utils/atomUtils";
-import { isEnsembleIdentOfType } from "@framework/utils/ensembleIdentUtils";
 
 import { selectedEnsembleIdentsAtom } from "./derivedAtoms";
 
@@ -10,40 +8,36 @@ const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
 export const vectorListQueriesAtom = atomWithQueries((get) => {
-    const ensembleSet = get(EnsembleSetAtom);
     const selectedEnsembleIdents = get(selectedEnsembleIdentsAtom);
 
     const queries = selectedEnsembleIdents.map((ensembleIdent) => {
         // Regular Ensemble
-        if (isEnsembleIdentOfType(ensembleIdent, RegularEnsembleIdent)) {
+        if (EnsembleIdent.isValidRegularEnsembleIdentString(ensembleIdent)) {
+            const { caseUuid, ensembleName } = EnsembleIdent.regularEnsembleCaseUuidAndNameFromString(ensembleIdent);
+
             return () => ({
-                queryKey: ["getVectorList", ensembleIdent.toString()],
-                queryFn: () =>
-                    apiService.timeseries.getVectorList(ensembleIdent.getCaseUuid(), ensembleIdent.getEnsembleName()),
+                queryKey: ["getVectorList", ensembleIdent],
+                queryFn: () => apiService.timeseries.getVectorList(caseUuid, ensembleName),
                 staleTime: STALE_TIME,
                 gcTime: CACHE_TIME,
             });
         }
 
         // Delta Ensemble
-        const deltaEnsemble = ensembleSet.findEnsemble(ensembleIdent);
-        if (!deltaEnsemble) {
-            throw new Error(
-                `Delta ensemble not found in application EnsembleSet for ensembleIdent: ${ensembleIdent.toString()}`
-            );
+        if (!EnsembleIdent.isValidDeltaEnsembleIdentString(ensembleIdent)) {
+            throw new Error(`Invalid delta ensemble ident string: ${ensembleIdent}`);
         }
-
-        const compareEnsembleIdent = deltaEnsemble.getCompareEnsembleIdent();
-        const referenceEnsembleIdent = deltaEnsemble.getReferenceEnsembleIdent();
+        const { compareEnsemble, referenceEnsemble } =
+            EnsembleIdent.deltaEnsembleCaseUuidsAndNamesFromString(ensembleIdent);
 
         return () => ({
-            queryKey: ["getDeltaEnsembleVectorList", ensembleIdent.toString()],
+            queryKey: ["getDeltaEnsembleVectorList", ensembleIdent],
             queryFn: () =>
                 apiService.timeseries.getDeltaEnsembleVectorList(
-                    compareEnsembleIdent.getCaseUuid(),
-                    compareEnsembleIdent.getEnsembleName(),
-                    referenceEnsembleIdent.getCaseUuid(),
-                    referenceEnsembleIdent.getEnsembleName()
+                    compareEnsemble.caseUuid,
+                    compareEnsemble.ensembleName,
+                    referenceEnsemble.caseUuid,
+                    referenceEnsemble.ensembleName
                 ),
             staleTime: STALE_TIME,
             gcTime: CACHE_TIME,

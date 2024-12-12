@@ -36,31 +36,32 @@ export const View = ({
     const [activeTimestampUtcMs, setActiveTimestampUtcMs] = React.useState<number | null>(null);
     const subscribedHoverTimestampUtcMs = useSubscribedValue("global.hoverTimestamp", workbenchServices);
 
+    const ensembleSet = workbenchSession.getEnsembleSet();
+    const ensemble = vectorSpec ? ensembleSet.findRegularEnsemble(vectorSpec.ensembleIdent) : null;
+
     const realizationsQuery = useVectorDataQuery(
-        vectorSpec?.ensembleIdent.getCaseUuid(),
-        vectorSpec?.ensembleIdent.getEnsembleName(),
+        ensemble?.getCaseUuid(),
+        ensemble?.getEnsembleName(),
         vectorSpec?.vectorName,
         resampleFrequency,
         null
     );
 
     const statisticsQuery = useStatisticalVectorSensitivityDataQuery(
-        vectorSpec?.ensembleIdent.getCaseUuid(),
-        vectorSpec?.ensembleIdent.getEnsembleName(),
+        ensemble?.getCaseUuid(),
+        ensemble?.getEnsembleName(),
         vectorSpec?.vectorName,
         resampleFrequency,
         showStatistics
     );
 
     const historicalQuery = useHistoricalVectorDataQuery(
-        vectorSpec?.ensembleIdent.getCaseUuid(),
-        vectorSpec?.ensembleIdent.getEnsembleName(),
+        ensemble?.getCaseUuid(),
+        ensemble?.getEnsembleName(),
         vectorSpec?.vectorName,
         resampleFrequency,
         vectorSpec?.hasHistorical ? showHistorical : false
     );
-    const ensembleSet = workbenchSession.getEnsembleSet();
-    const ensemble = vectorSpec ? ensembleSet.findEnsemble(vectorSpec.ensembleIdent) : null;
 
     // Set the active timestamp to the last timestamp in the data if it is not already set
     const lastTimestampUtcMs = statisticsQuery.data?.at(0)?.timestamps_utc_ms.slice(-1)[0] ?? null;
@@ -82,7 +83,7 @@ export const View = ({
         return {
             data,
             metaData: {
-                ensembleIdentString: ensemble?.getIdent().toString() ?? "",
+                ensembleIdent: ensemble?.getIdent() ?? "",
                 unit: "unit",
             },
         };

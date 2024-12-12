@@ -1,4 +1,3 @@
-import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { InterfaceInitialization } from "@framework/UniDirectionalModuleComponentsInterface";
 
 import { selectedColorByAtom, selectedDependentVariablesAtom, selectedPhaseAtom } from "./settings/atoms/baseAtoms";
@@ -10,7 +9,7 @@ type SettingsToViewInterface = {
     selectedPhase: PhaseType;
     selectedColorBy: ColorBy;
     selectedDependentVariables: PressureDependentVariable[];
-    selectedEnsembleIdents: RegularEnsembleIdent[];
+    selectedEnsembleIdents: string[];
     selectedPvtNums: number[];
     pvtDataQueries: CombinedPvtDataResult;
 };
