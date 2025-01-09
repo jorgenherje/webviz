@@ -1,7 +1,7 @@
 import Plot from "react-plotly.js";
 
 import { merge } from "lodash";
-import { Annotations, Layout, PlotData, Shape, XAxisName, YAxisName } from "plotly.js";
+import { Annotations, AxisType, Layout, PlotData, Shape, XAxisName, YAxisName } from "plotly.js";
 
 export class Figure {
     private _plotData: Partial<PlotData>[];
@@ -23,6 +23,14 @@ export class Figure {
     }
 
     getAxisIndex(row: number, column: number): number {
+        // Note:
+        // - The row and column indices are 1-based
+        // - Plotly build rows from bottom up, and columns left to right
+        //   Example:
+        //   3x3 grid:  x7y7 x8y8 x9y9
+        //              x4y4 x5y5 x6y6
+        //              x1y1 x2y2 x3y3
+
         if (row > this._gridAxesMapping.length || column > this._gridAxesMapping[row - 1].length) {
             throw new Error(`Invalid row/column index: ${row}/${column}`);
         }
@@ -32,6 +40,10 @@ export class Figure {
         }
 
         return this._gridAxesMapping[row - 1][column - 1];
+    }
+
+    addTraces(traces: Partial<PlotData>[], row?: number, column?: number): void {
+        traces.forEach((trace) => this.addTrace(trace, row, column));
     }
 
     addTrace(trace: Partial<PlotData>, row?: number, column?: number): void {
@@ -115,7 +127,7 @@ export class Figure {
         merge(this._plotLayout, patch);
     }
 
-    makePlot(): React.ReactNode {
+    makePlot(handleOnClick?: ((event: Readonly<Plotly.PlotMouseEvent>) => void) | undefined): React.ReactNode {
         return (
             <Plot
                 data={this._plotData}
@@ -123,8 +135,10 @@ export class Figure {
                 config={{
                     displaylogo: false,
                     responsive: true,
-                    modeBarButtonsToRemove: ["toImage", "sendDataToCloud", "autoScale2d", "resetScale2d"],
+                    // modeBarButtonsToRemove: ["toImage", "sendDataToCloud", "autoScale2d", "resetScale2d"],
+                    modeBarButtonsToRemove: ["toImage", "sendDataToCloud", "resetScale2d"],
                 }}
+                onClick={handleOnClick}
             />
         );
     }
@@ -144,20 +158,36 @@ function makeDomain(numElements: number, index: number, spacing: number, margin:
     return [domainStart, domainEnd];
 }
 
+/**
+ * Options for the makeSubplots function.
+ *
+ * numRows: Number of rows in the subplot grid.
+ * numCols: Number of columns in the subplot grid.
+ * subplotTitles: Titles for each subplot, from top-left to bottom-right.
+ * sharedXAxes: Whether to share x-axes between subplots.
+ */
 export interface MakeSubplotOptions {
     numRows?: number;
     numCols?: number;
     subplotTitles?: string[];
-    sharedXAxes?: boolean | "all";
-    sharedYAxes?: boolean | "all";
+    sharedXAxes?: boolean | "all" | "rows" | "columns";
+    sharedYAxes?: boolean | "all" | "rows" | "columns";
     width?: number;
     height?: number;
     horizontalSpacing?: number;
     verticalSpacing?: number;
     margin?: Partial<Layout["margin"]>;
     showGrid?: boolean;
+    xAxisType?: AxisType;
+    startCell?: "top-left" | "bottom-left"; // TODO: Remove?
 }
 
+/**
+ * Utility function to create a figure with subplots.
+ *
+ * Loosely based on the python plotly function make_subplots:
+ * https://github.com/plotly/plotly.py/blob/master/packages/python/plotly/plotly/subplots.py
+ */
 export function makeSubplots(options: MakeSubplotOptions): Figure {
     let layout: Partial<Layout> = {
         width: options.width,
@@ -210,15 +240,19 @@ export function makeSubplots(options: MakeSubplotOptions): Figure {
             let matchingXAxisIndex = undefined;
             if (options.sharedXAxes === "all") {
                 matchingXAxisIndex = (options.numRows - 1) * options.numCols + 1;
-            } else if (options.sharedXAxes) {
+            } else if (options.sharedXAxes === true || options.sharedXAxes === "columns") {
                 matchingXAxisIndex = col + 1;
+            } else if (options.sharedXAxes === "rows") {
+                matchingXAxisIndex = row * options.numCols + 1;
             }
 
             let matchingYAxisIndex = undefined;
             if (options.sharedYAxes === "all") {
+                matchingYAxisIndex = 1;
+            } else if (options.sharedYAxes === true || options.sharedYAxes === "rows") {
                 matchingYAxisIndex = row * options.numCols + 1;
-            } else if (options.sharedYAxes) {
-                matchingYAxisIndex = row * options.numCols + 1;
+            } else if (options.sharedYAxes === "columns") {
+                matchingYAxisIndex = col + 1;
             }
 
             const [xDomainStart, xDomainEnd] = makeDomain(options.numCols, col, options.horizontalSpacing, [
@@ -241,6 +275,7 @@ export function makeSubplots(options: MakeSubplotOptions): Figure {
                         matches: `x${matchingXAxisIndex === 1 ? "" : matchingXAxisIndex}`,
                         showticklabels: false,
                         showgrid: options.showGrid ?? false,
+                        type: options.xAxisType,
                     },
                 };
             } else {
@@ -251,6 +286,7 @@ export function makeSubplots(options: MakeSubplotOptions): Figure {
                         domain: [xDomainStart, xDomainEnd],
                         showticklabels: true,
                         showgrid: options.showGrid ?? false,
+                        type: options.xAxisType,
                     },
                 };
             }
