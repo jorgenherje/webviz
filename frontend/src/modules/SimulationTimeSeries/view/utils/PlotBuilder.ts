@@ -9,10 +9,13 @@ import {
 import { DeltaEnsembleIdent } from "@framework/DeltaEnsembleIdent";
 import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { isEnsembleIdentOfType } from "@framework/utils/ensembleIdentUtils";
+import { timestampUtcMsToCompactIsoString } from "@framework/utils/timestampUtils";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { VectorSpec } from "@modules/SimulationTimeSeries/typesAndEnums";
 import { Figure, makeSubplots } from "@modules/_shared/Figure";
 import { simulationUnitReformat, simulationVectorDescription } from "@modules/_shared/reservoirSimulationStringUtils";
+
+import { Annotations, PlotMarker, Shape } from "plotly.js";
 
 import {
     createHistoricalVectorTrace,
@@ -24,6 +27,7 @@ import {
 } from "./PlotlyTraceUtils/createVectorTracesUtils";
 import { scaleHexColorLightness } from "./colorUtils";
 import { EnsemblesContinuousParameterColoring } from "./ensemblesContinuousParameterColoring";
+import { TimeSeriesPlotData } from "./timeSeriesPlotData";
 
 type VectorNameUnitMap = { [vectorName: string]: string };
 type HexColorMap = { [key: string]: string };
@@ -129,9 +133,6 @@ export class PlotBuilder {
             );
         }
 
-        // TODO: Order subplot titles s.t. they match the order of the subplots top-left to bottom-right,
-        // get issues as the
-
         // Create figure
         ({ numRows: this._numRows, numCols: this._numCols } = this.calcNumRowsAndCols(this._numberOfSubplots));
         this._figure = makeSubplots({
@@ -139,25 +140,41 @@ export class PlotBuilder {
             numRows: this._numRows,
             height: this._height,
             width: this._width,
-            margin: { t: 30, b: 40, l: 0, r: 0 },
+            margin: { t: 30, b: 40, l: 40, r: 40 },
+            title: this._subplotTitles.length === 0 ? "Select vectors to visualize" : undefined,
             subplotTitles: this._subplotTitles,
             xAxisType: "date",
+            showGrid: true,
             sharedXAxes: "all",
         });
-
-        // TODO:
-        // - Handle keep uirevision?
-        // - Assign same color to vector independent of order in vector list?
     }
 
-    private calcNumRowsAndCols(numSubplots: number): { numRows: number; numCols: number } {
+    private calcNumRowsAndCols(
+        numSubplots: number,
+        maxNumRows?: number,
+        maxNumCols?: number
+    ): { numRows: number; numCols: number } {
         if (numSubplots === 1) {
             return { numRows: 1, numCols: 1 };
         }
 
+        if (maxNumCols && maxNumRows) {
+            throw new Error("Only one of maxNumCols or maxNumRows can be defined");
+        }
+
+        if (maxNumRows !== undefined) {
+            const numRows = Math.min(maxNumRows, Math.ceil(Math.sqrt(numSubplots)));
+            const numCols = Math.ceil(numSubplots / numRows);
+            return { numRows, numCols };
+        }
+        if (maxNumCols !== undefined) {
+            const numCols = Math.min(maxNumCols, Math.ceil(Math.sqrt(numSubplots)));
+            const numRows = Math.ceil(numSubplots / numCols);
+            return { numRows, numCols };
+        }
+
         const numRows = Math.ceil(Math.sqrt(numSubplots));
         const numCols = Math.ceil(numSubplots / numRows);
-
         return { numRows, numCols };
     }
 
@@ -178,18 +195,17 @@ export class PlotBuilder {
      *
      * The subplot index is 0-based, whilst the row and column numbers are 1-based.
      *
-     * The subplots for plotly are arranged in a grid with columns from left to right, and
-     * rows from bottom to top. This implies with the following layout for a 3x3 grid (r1 = row 1, c1 = column 1):
+     * The subplots for the subplot utility are arranged top-left to bottom-right, which implies
+     * the following layout for a 3x3 grid (r1 = row 1, c1 = column 1):
      *
-     *              r3c1 r3c2 r3c3
-     *              r2c1 r2c2 r2c3
      *              r1c1 r1c2 r1c3
+     *              r2c1 r2c2 r2c3
+     *              r3c1 r3c2 r3c3
      *
      */
-    private getSubplotRowAndColFromIndex(index: number): { row: number; col: number } {
-        const row = this._numRows - Math.floor(index / this._numCols);
-        // const row = Math.floor(index / this._numCols) + 1;
-        const col = (index % this._numCols) + 1;
+    private getSubplotRowAndColFromIndex(subplotIndex: number): { row: number; col: number } {
+        const row = Math.floor(subplotIndex / this._numCols) + 1;
+        const col = (subplotIndex % this._numCols) + 1;
 
         if (row > this._numRows || col > this._numCols) {
             throw new Error("Subplot index out of bounds");
@@ -198,8 +214,49 @@ export class PlotBuilder {
         return { row, col };
     }
 
+    /**
+     * Update subplot titles for vector subplots
+     *
+     * The subplot titles are updated based on the vector name and unit provided in the vectorNameUnitMap.
+     * The unit is provided after traces are added, thus the subplot titles are updated after traces are added.
+     */
+    private updateVectorSubplotTitles(): void {
+        if (this._subplotOwner !== SubplotOwner.VECTOR) {
+            return;
+        }
+
+        for (const vectorName of this._uniqueVectorNames) {
+            const getSubplotIndex = this._uniqueVectorNames.indexOf(vectorName);
+            if (getSubplotIndex === -1) {
+                continue;
+            }
+
+            const { row, col } = this.getSubplotRowAndColFromIndex(getSubplotIndex);
+            if (!this._figure.hasSubplotTitle(row, col)) {
+                continue;
+            }
+
+            const newSubplotTitle = this.createVectorSubplotTitle(vectorName);
+            this._figure.updateSubplotTitle(newSubplotTitle, row, col);
+        }
+    }
+
     build(handleOnClick?: ((event: Readonly<Plotly.PlotMouseEvent>) => void) | undefined): React.ReactNode {
-        return this._figure.makePlot(handleOnClick);
+        // Post-process after all traces are added
+        this.createGraphLegends();
+        this.updateVectorSubplotTitles();
+
+        for (let index = 0; index < this._numberOfSubplots; index++) {
+            const { row, col } = this.getSubplotRowAndColFromIndex(index);
+            for (const timeAnnotation of this.createTimeAnnotations()) {
+                this._figure.addAnnotation(timeAnnotation, row, col);
+            }
+            for (const timeShape of this.createTimeShapes()) {
+                this._figure.addShape(timeShape, row, col);
+            }
+        }
+
+        return this._figure.makePlot({ onClick: handleOnClick });
     }
 
     addRealizationTracesColoredByParameter(
@@ -453,6 +510,188 @@ export class PlotBuilder {
             this._figure.addTraces(vectorObservationsTraces, row, col);
 
             this._hasObservationTraces = true;
+        }
+    }
+
+    addTimeAnnotation(timestampUtcMs: number): void {
+        this._timeAnnotationTimestamps.push(timestampUtcMs);
+    }
+
+    private createTimeAnnotations(): Partial<Annotations>[] {
+        const timeAnnotations: Partial<Annotations>[] = [];
+
+        for (const timestampUtcMs of this._timeAnnotationTimestamps) {
+            timeAnnotations.push({
+                x: timestampUtcMs,
+                y: -200, // 0 - 22 / this._height
+                text: timestampUtcMsToCompactIsoString(timestampUtcMs),
+                showarrow: false,
+                arrowhead: 0,
+                bgcolor: "rgba(255, 255, 255, 1)",
+                bordercolor: "rgba(255, 0, 0, 1)",
+                borderwidth: 1,
+                borderpad: 4,
+            });
+        }
+
+        return timeAnnotations;
+    }
+
+    private createTimeShapes(): Partial<Shape>[] {
+        const timeShapes: Partial<Shape>[] = [];
+
+        for (const timestampUtcMs of this._timeAnnotationTimestamps) {
+            timeShapes.push({
+                type: "line",
+                x0: timestampUtcMs,
+                y0: 0,
+                x1: timestampUtcMs,
+                y1: 1,
+                line: {
+                    color: "red",
+                    width: 3,
+                    dash: "dot",
+                },
+            });
+        }
+
+        return timeShapes;
+    }
+
+    /**
+     * Create legend trace with empty x and y values to show legend for each vector/ensemble
+     *
+     * The trace is linked with specific legendgroup, and placed at subplot given by xaxis and yaxis.
+     */
+    private createLegendTrace(
+        legendName: string,
+        legendGroup: string,
+        hexColor: string,
+        legendRank: number,
+        yaxis: string,
+        xaxis: string,
+        includeMarkers = false
+    ): Partial<TimeSeriesPlotData> {
+        return {
+            name: legendName,
+            x: [null],
+            y: [null],
+            legendgroup: legendGroup,
+            showlegend: true,
+            visible: true,
+            mode: includeMarkers ? "lines+markers" : "lines",
+            line: { color: hexColor },
+            marker: { color: hexColor },
+            legendrank: legendRank,
+            yaxis: yaxis,
+            xaxis: xaxis,
+        };
+    }
+
+    /**
+     * Create graph legends
+     *
+     * Build "dummy" traces with empty x and y values for specific legend group, and add to top right subplot.
+     * The legends for each added "dummy" trace will then be shown in the top right subplot.
+     */
+    private createGraphLegends(): void {
+        let currentLegendRank = 1;
+
+        // Place legends in top right subplot
+        const numColumns = this._figure.getNumColumns();
+        const topRightSubplotIndex = this._figure.getAxisIndex(1, numColumns);
+        const xAxisTopRight = `xaxis${topRightSubplotIndex}`;
+        const yAxisTopRight = `yaxis${topRightSubplotIndex}`;
+
+        // Add legend for each vector/ensemble not colored by parameter
+        if (this._addedEnsemblesLegendTracker.length !== 0 || this._addedVectorsLegendTracker.length !== 0) {
+            // Add legend for each vector/ensemble on top
+            if (this._subplotOwner === SubplotOwner.ENSEMBLE) {
+                this._addedVectorsLegendTracker.forEach((vectorName) => {
+                    const hexColor = this._vectorHexColors[vectorName] ?? this._traceFallbackColor;
+                    this._figure.addTrace(
+                        this.createLegendTrace(
+                            vectorName,
+                            vectorName,
+                            hexColor,
+                            currentLegendRank++,
+                            yAxisTopRight,
+                            xAxisTopRight
+                        )
+                    );
+                });
+            }
+            if (this._subplotOwner === SubplotOwner.VECTOR) {
+                this._addedEnsemblesLegendTracker.forEach((ensembleIdent) => {
+                    const legendGroup = ensembleIdent.toString();
+                    const legendName = this._makeEnsembleDisplayName(ensembleIdent);
+                    const legendColor =
+                        this._selectedVectorSpecifications.find((el) => el.ensembleIdent === ensembleIdent)?.color ??
+                        this._traceFallbackColor;
+                    this._figure.addTrace(
+                        this.createLegendTrace(
+                            legendName,
+                            legendGroup,
+                            legendColor,
+                            currentLegendRank++,
+                            xAxisTopRight,
+                            yAxisTopRight
+                        )
+                    );
+                });
+            }
+        }
+
+        // Add legend for history trace with legendrank after vectors/ensembles
+        if (this._hasHistoryTraces) {
+            const historyName = "History";
+            this._figure.addTrace(
+                this.createLegendTrace(
+                    historyName,
+                    historyName,
+                    this._historyVectorColor,
+                    currentLegendRank++,
+                    yAxisTopRight,
+                    xAxisTopRight
+                )
+            );
+        }
+
+        // Add legend for observation trace with legendrank after vectors/ensembles and history
+        if (this._hasObservationTraces) {
+            const observationName = "Observation";
+            const includeMarkers = true;
+            this._figure.addTrace(
+                this.createLegendTrace(
+                    observationName,
+                    observationName,
+                    this._observationColor,
+                    currentLegendRank++,
+                    yAxisTopRight,
+                    xAxisTopRight,
+                    includeMarkers
+                )
+            );
+        }
+
+        // Add color scale for color by parameter below the legends
+        if (this._hasRealizationsTracesColoredByParameter && this._ensemblesParameterColoring) {
+            const colorScaleMarker: Partial<PlotMarker> = {
+                ...this._ensemblesParameterColoring.getColorScale().getAsPlotlyColorScaleMarkerObject(),
+                colorbar: {
+                    title: "Range: " + this._ensemblesParameterColoring.getParameterDisplayName(),
+                    titleside: "right",
+                    ticks: "outside",
+                    len: 0.75, // Note: If too many legends are added, this len might have to be reduced?
+                },
+            };
+            const parameterColorLegendTrace: Partial<TimeSeriesPlotData> = {
+                x: [null],
+                y: [null],
+                marker: colorScaleMarker,
+                showlegend: false,
+            };
+            this._figure.addTrace(parameterColorLegendTrace);
         }
     }
 

@@ -82,7 +82,11 @@ export function usePlotBuilder(
     );
 
     // Add traces based on visualization mode
-    if (colorByParameter && visualizationMode === VisualizationMode.INDIVIDUAL_REALIZATIONS) {
+    if (
+        colorByParameter &&
+        ensemblesParameterColoring &&
+        visualizationMode === VisualizationMode.INDIVIDUAL_REALIZATIONS
+    ) {
         plotBuilder.addRealizationTracesColoredByParameter(loadedVectorSpecificationsAndRealizationData);
     }
     if (!colorByParameter && visualizationMode === VisualizationMode.INDIVIDUAL_REALIZATIONS) {
@@ -122,7 +126,7 @@ export function usePlotBuilder(
     }
 
     if (activeTimestampUtcMs) {
-        // plotBuilder.addTimeAnnotation(activeTimestampUtcMs);
+        plotBuilder.addTimeAnnotation(activeTimestampUtcMs);
     }
 
     const plot = plotBuilder.build(handlePlotOnClick);
