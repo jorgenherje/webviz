@@ -1,16 +1,15 @@
-import { getWellTrajectoriesOptions, postGetPolylineIntersectionOptions } from "@api";
-import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
+import { postGetPolylineIntersectionOptions } from "@api";
+import {
+    PolylineIntersection_trans,
+    transformPolylineIntersection,
+} from "@modules/_shared/Intersection/gridIntersection";
+import { makeIntersectionPolylineXyUtmPromiseForDelegate } from "@modules/_shared/Intersection/intersectionPolylineUtils";
 import { ItemDelegate } from "@modules/_shared/LayerFramework/delegates/ItemDelegate";
 import { LayerColoringType, LayerDelegate } from "@modules/_shared/LayerFramework/delegates/LayerDelegate";
 import { LayerManager } from "@modules/_shared/LayerFramework/framework/LayerManager/LayerManager";
 import { BoundingBox, Layer, SerializedLayer } from "@modules/_shared/LayerFramework/interfaces";
 import { LayerRegistry } from "@modules/_shared/LayerFramework/layers/LayerRegistry";
 import { SettingType } from "@modules/_shared/LayerFramework/settings/settingsTypes";
-import {
-    PolylineIntersection_trans,
-    calcExtendedSimplifiedWellboreTrajectoryInXYPlane,
-    transformPolylineIntersection,
-} from "@modules/_shared/utils/wellbore";
 import { QueryClient } from "@tanstack/react-query";
 
 import { isEqual } from "lodash";
@@ -92,8 +91,6 @@ export class IntersectionRealizationGridLayer
             timeOrInterval = null;
         }
 
-        const fieldIdentifier = this._itemDelegate.getLayerManager().getGlobalSetting("fieldId");
-
         const queryKey = [
             "gridIntersection",
             ensembleIdent,
@@ -105,69 +102,18 @@ export class IntersectionRealizationGridLayer
         ];
         this._layerDelegate.registerQueryKey(queryKey);
 
-        let makePolylinePromise: Promise<number[]> = new Promise((resolve) => {
+        let makePolylineXyUtmPromise: Promise<number[]> = new Promise((resolve) => {
             resolve([]);
         });
-
         if (intersection) {
-            makePolylinePromise = new Promise((resolve) => {
-                if (intersection.type === "wellbore") {
-                    return queryClient
-                        .fetchQuery({
-                            ...getWellTrajectoriesOptions({
-                                query: {
-                                    field_identifier: fieldIdentifier ?? "",
-                                    wellbore_uuids: [intersection.uuid],
-                                },
-                            }),
-                        })
-                        .then((data) => {
-                            const path: number[][] = [];
-                            for (const [index, northing] of data[0].northingArr.entries()) {
-                                const easting = data[0].eastingArr[index];
-                                const tvd_msl = data[0].tvdMslArr[index];
-
-                                path.push([easting, northing, tvd_msl]);
-                            }
-                            const offset = data[0].tvdMslArr[0];
-
-                            const intersectionReferenceSystem = new IntersectionReferenceSystem(path);
-                            intersectionReferenceSystem.offset = offset;
-
-                            const polylineUtmXy: number[] = [];
-                            polylineUtmXy.push(
-                                ...calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
-                                    path,
-                                    0,
-                                    5
-                                ).simplifiedWellboreTrajectoryXy.flat()
-                            );
-
-                            resolve(polylineUtmXy);
-                        });
-                } else {
-                    const intersectionPolyline = this._itemDelegate
-                        .getLayerManager()
-                        .getWorkbenchSession()
-                        .getUserCreatedItems()
-                        .getIntersectionPolylines()
-                        .getPolyline(intersection.uuid);
-                    if (!intersectionPolyline) {
-                        resolve([]);
-                        return;
-                    }
-
-                    const polylineUtmXy: number[] = [];
-                    for (const point of intersectionPolyline.path) {
-                        polylineUtmXy.push(point[0], point[1]);
-                    }
-
-                    resolve(polylineUtmXy);
-                }
-            });
+            makePolylineXyUtmPromise = makeIntersectionPolylineXyUtmPromiseForDelegate(
+                intersection,
+                this._itemDelegate,
+                queryClient
+            );
         }
 
-        const gridIntersectionPromise = makePolylinePromise
+        const gridIntersectionPromise = makePolylineXyUtmPromise
             .then((polyline_utm_xy) =>
                 queryClient.fetchQuery({
                     ...postGetPolylineIntersectionOptions({
