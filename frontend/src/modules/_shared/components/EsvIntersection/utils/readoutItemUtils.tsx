@@ -443,7 +443,7 @@ export function getAdditionalInformationItemsFromReadoutItem(readoutItem: Readou
             const traceNum = Math.floor((x - seismicData.minFenceX) / columnWidth);
 
             const index = traceNum * seismicData.numSamplesPerTrace + sampleNum;
-            const value = seismicData.fenceTracesFloat32Array[index];
+            const value = seismicData.fenceTracesArray[index];
 
             items.push({
                 label: seismicData.propertyName,

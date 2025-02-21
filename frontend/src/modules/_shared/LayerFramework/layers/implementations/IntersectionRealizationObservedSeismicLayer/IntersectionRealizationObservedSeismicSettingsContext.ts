@@ -4,20 +4,21 @@ import { LayerManager } from "@modules/_shared/LayerFramework/framework/LayerMan
 import { DefineDependenciesArgs, SettingsContext } from "@modules/_shared/LayerFramework/interfaces";
 import { AttributeSetting } from "@modules/_shared/LayerFramework/settings/implementations/AttributeSetting";
 import { EnsembleSetting } from "@modules/_shared/LayerFramework/settings/implementations/EnsembleSetting";
+import { IntersectionExtensionLengthSetting } from "@modules/_shared/LayerFramework/settings/implementations/IntersectionExtensionLengthSetting";
 import { IntersectionSetting } from "@modules/_shared/LayerFramework/settings/implementations/IntersectionSetting";
 import { RealizationSetting } from "@modules/_shared/LayerFramework/settings/implementations/RealizationSetting";
 import { TimeOrIntervalSetting } from "@modules/_shared/LayerFramework/settings/implementations/TimeOrIntervalSetting";
 import { SettingType } from "@modules/_shared/LayerFramework/settings/settingsTypes";
 
-import { IntersectionRealizationSimulatedSeismicSettings } from "./types";
+import { IntersectionRealizationObservedSeismicSettings } from "./types";
 
-export class IntersectionRealizationSimulatedSeismicSettingsContext
-    implements SettingsContext<IntersectionRealizationSimulatedSeismicSettings>
+export class IntersectionRealizationObservedSeismicSettingsContext
+    implements SettingsContext<IntersectionRealizationObservedSeismicSettings>
 {
-    private _contextDelegate: SettingsContextDelegate<IntersectionRealizationSimulatedSeismicSettings>;
+    private _contextDelegate: SettingsContextDelegate<IntersectionRealizationObservedSeismicSettings>;
 
     constructor(layerManager: LayerManager) {
-        this._contextDelegate = new SettingsContextDelegate<IntersectionRealizationSimulatedSeismicSettings>(
+        this._contextDelegate = new SettingsContextDelegate<IntersectionRealizationObservedSeismicSettings>(
             this,
             layerManager,
             {
@@ -26,21 +27,23 @@ export class IntersectionRealizationSimulatedSeismicSettingsContext
                 [SettingType.REALIZATION]: new RealizationSetting(),
                 [SettingType.ATTRIBUTE]: new AttributeSetting(),
                 [SettingType.TIME_OR_INTERVAL]: new TimeOrIntervalSetting(),
+                [SettingType.INTERSECTION_EXTENSION_LENGTH]: new IntersectionExtensionLengthSetting(),
             }
         );
     }
 
-    areCurrentSettingsValid(settings: IntersectionRealizationSimulatedSeismicSettings): boolean {
+    areCurrentSettingsValid(settings: IntersectionRealizationObservedSeismicSettings): boolean {
         return (
             settings[SettingType.INTERSECTION] !== null &&
             settings[SettingType.ENSEMBLE] !== null &&
             settings[SettingType.REALIZATION] !== null &&
             settings[SettingType.ATTRIBUTE] !== null &&
-            settings[SettingType.TIME_OR_INTERVAL] !== null
+            settings[SettingType.TIME_OR_INTERVAL] !== null &&
+            settings[SettingType.INTERSECTION_EXTENSION_LENGTH] !== null
         );
     }
 
-    getDelegate(): SettingsContextDelegate<IntersectionRealizationSimulatedSeismicSettings> {
+    getDelegate(): SettingsContextDelegate<IntersectionRealizationObservedSeismicSettings> {
         return this._contextDelegate;
     }
 
@@ -53,7 +56,7 @@ export class IntersectionRealizationSimulatedSeismicSettingsContext
         availableSettingsUpdater,
         // storedDataUpdater,
         queryClient,
-    }: DefineDependenciesArgs<IntersectionRealizationSimulatedSeismicSettings>) {
+    }: DefineDependenciesArgs<IntersectionRealizationObservedSeismicSettings>) {
         availableSettingsUpdater(SettingType.ENSEMBLE, ({ getGlobalSetting }) => {
             const fieldIdentifier = getGlobalSetting("fieldId");
             const ensembles = getGlobalSetting("ensembles");
@@ -114,10 +117,10 @@ export class IntersectionRealizationSimulatedSeismicSettingsContext
                 return [];
             }
 
-            // Get seismic attributes that are depth and not observation
+            // Get seismic attributes that are depth and observation
             const availableAttributes = Array.from(
                 new Set(
-                    seismicCubeMetaList.filter((el) => el.isDepth && !el.isObservation).map((el) => el.seismicAttribute)
+                    seismicCubeMetaList.filter((el) => el.isDepth && el.isObservation).map((el) => el.seismicAttribute)
                 )
             );
 

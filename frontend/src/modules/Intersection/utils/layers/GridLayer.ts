@@ -6,7 +6,7 @@ import {
     AdjustedPolylineIntersection,
     transformPolylineIntersection,
     transformPolylineIntersectionResult,
-} from "@modules/_shared/Intersection/gridIntersection";
+} from "@modules/_shared/Intersection/gridIntersectionTransform";
 import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import { QueryClient } from "@tanstack/query-core";
 

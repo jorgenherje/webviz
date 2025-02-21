@@ -259,7 +259,7 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
                         maxFenceDepth: seismicInfo.maxTvdMsl,
                         numSamplesPerTrace: data.seismicFenceData.num_samples_per_trace,
                         numTraces: data.seismicFenceData.num_traces,
-                        fenceTracesFloat32Array: data.seismicFenceData.fenceTracesFloat32Arr,
+                        fenceTracesArray: data.seismicFenceData.fenceTracesFloat32Arr,
                     },
                     order,
                     layerOpacity: 1,

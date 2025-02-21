@@ -1,12 +1,13 @@
 import { postGetSeismicFenceOptions } from "@api";
 import {
-    createResampledSeismicFencePolyline,
+    createResampledPolylineXyUtm,
     makeIntersectionPolylineXyUtmPromiseForDelegate,
 } from "@modules/_shared/Intersection/intersectionPolylineUtils";
 import {
     SeismicPolylineAndFenceData,
     createTransformedSeismicPolylineAndFenceData,
-} from "@modules/_shared/Intersection/seismicIntersection";
+} from "@modules/_shared/Intersection/seismicIntersectionTransform";
+import { createSeismicFencePolylineFromPolylineXy } from "@modules/_shared/Intersection/seismicIntersectionUtils";
 import { ItemDelegate } from "@modules/_shared/LayerFramework/delegates/ItemDelegate";
 import { LayerColoringType, LayerDelegate } from "@modules/_shared/LayerFramework/delegates/LayerDelegate";
 import { LayerManager } from "@modules/_shared/LayerFramework/framework/LayerManager/LayerManager";
@@ -17,21 +18,21 @@ import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
 
-import { IntersectionRealizationSimulatedSeismicSettingsContext } from "./IntersectionRealizationSimulatedSeismicSettingsContext";
-import { IntersectionRealizationSimulatedSeismicSettings } from "./types";
+import { IntersectionRealizationObservedSeismicSettingsContext } from "./IntersectionRealizationObservedSeismicSettingsContext";
+import { IntersectionRealizationObservedSeismicSettings } from "./types";
 
-export class IntersectionRealizationSimulatedSeismicLayer
-    implements Layer<IntersectionRealizationSimulatedSeismicSettings, SeismicPolylineAndFenceData>
+export class IntersectionRealizationObservedSeismicLayer
+    implements Layer<IntersectionRealizationObservedSeismicSettings, SeismicPolylineAndFenceData>
 {
-    private _layerDelegate: LayerDelegate<IntersectionRealizationSimulatedSeismicSettings, SeismicPolylineAndFenceData>;
+    private _layerDelegate: LayerDelegate<IntersectionRealizationObservedSeismicSettings, SeismicPolylineAndFenceData>;
     private _itemDelegate: ItemDelegate;
 
     constructor(layerManager: LayerManager) {
-        this._itemDelegate = new ItemDelegate("Intersection Realization Simulated Seismic", layerManager);
+        this._itemDelegate = new ItemDelegate("Intersection Realization Observed Seismic", layerManager);
         this._layerDelegate = new LayerDelegate(
             this,
             layerManager,
-            new IntersectionRealizationSimulatedSeismicSettingsContext(layerManager),
+            new IntersectionRealizationObservedSeismicSettingsContext(layerManager),
             LayerColoringType.COLORSCALE
         );
     }
@@ -44,13 +45,13 @@ export class IntersectionRealizationSimulatedSeismicLayer
         return this._itemDelegate;
     }
 
-    getLayerDelegate(): LayerDelegate<IntersectionRealizationSimulatedSeismicSettings, SeismicPolylineAndFenceData> {
+    getLayerDelegate(): LayerDelegate<IntersectionRealizationObservedSeismicSettings, SeismicPolylineAndFenceData> {
         return this._layerDelegate;
     }
 
     doSettingsChangesRequireDataRefetch(
-        prevSettings: IntersectionRealizationSimulatedSeismicSettings,
-        newSettings: IntersectionRealizationSimulatedSeismicSettings
+        prevSettings: IntersectionRealizationObservedSeismicSettings,
+        newSettings: IntersectionRealizationObservedSeismicSettings
     ): boolean {
         return !isEqual(prevSettings, newSettings);
     }
@@ -82,8 +83,19 @@ export class IntersectionRealizationSimulatedSeismicLayer
         const intersection = settings[SettingType.INTERSECTION].getDelegate().getValue();
         const attribute = settings[SettingType.ATTRIBUTE].getDelegate().getValue();
         const timeOrInterval = settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue();
+        const intersectionExtensionLength = settings[SettingType.INTERSECTION_EXTENSION_LENGTH]
+            .getDelegate()
+            .getValue();
 
-        const queryKey = ["gridIntersection", ensembleIdent, realization, intersection, attribute, timeOrInterval];
+        const queryKey = [
+            "gridIntersection",
+            ensembleIdent,
+            realization,
+            intersection,
+            attribute,
+            timeOrInterval,
+            intersectionExtensionLength,
+        ];
         this._layerDelegate.registerQueryKey(queryKey);
 
         // If no intersection is selected, return an empty polyline
@@ -94,7 +106,8 @@ export class IntersectionRealizationSimulatedSeismicLayer
             makePolylineXyUtmPromise = makeIntersectionPolylineXyUtmPromiseForDelegate(
                 intersection,
                 this._itemDelegate,
-                queryClient
+                queryClient,
+                intersectionExtensionLength ?? 0
             );
         }
 
@@ -102,8 +115,9 @@ export class IntersectionRealizationSimulatedSeismicLayer
         const resolution = 1;
 
         const seismicPolylineAndFenceDataPromise = makePolylineXyUtmPromise
-            .then((polylineXyUtm) => createResampledSeismicFencePolyline(polylineXyUtm, resolution))
-            .then((requestedPolyline) =>
+            .then((polylineXyUtm) => createResampledPolylineXyUtm(polylineXyUtm, resolution))
+            .then((resampledPolylineXyUtm) => createSeismicFencePolylineFromPolylineXy(resampledPolylineXyUtm))
+            .then((seismicFencePolylineUtm) =>
                 queryClient
                     .fetchQuery({
                         ...postGetSeismicFenceOptions({
@@ -113,28 +127,28 @@ export class IntersectionRealizationSimulatedSeismicLayer
                                 realization_num: realization ?? 0,
                                 seismic_attribute: attribute ?? "",
                                 time_or_interval_str: timeOrInterval ?? "",
-                                observed: false, // Set false for simulated seismic layer
+                                observed: true, // Set true for observed seismic layer
                             },
                             body: {
-                                polyline: requestedPolyline,
+                                polyline: seismicFencePolylineUtm,
                             },
                         }),
                     })
                     .then((apiData) => {
-                        return createTransformedSeismicPolylineAndFenceData(requestedPolyline, apiData);
+                        return createTransformedSeismicPolylineAndFenceData(seismicFencePolylineUtm, apiData);
                     })
             );
 
         return seismicPolylineAndFenceDataPromise;
     }
 
-    serializeState(): SerializedLayer<IntersectionRealizationSimulatedSeismicSettings> {
+    serializeState(): SerializedLayer<IntersectionRealizationObservedSeismicSettings> {
         return this._layerDelegate.serializeState();
     }
 
-    deserializeState(serializedState: SerializedLayer<IntersectionRealizationSimulatedSeismicSettings>): void {
+    deserializeState(serializedState: SerializedLayer<IntersectionRealizationObservedSeismicSettings>): void {
         this._layerDelegate.deserializeState(serializedState);
     }
 }
 
-LayerRegistry.registerLayer(IntersectionRealizationSimulatedSeismicLayer);
+LayerRegistry.registerLayer(IntersectionRealizationObservedSeismicLayer);

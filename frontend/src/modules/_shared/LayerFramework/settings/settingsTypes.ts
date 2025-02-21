@@ -21,4 +21,5 @@ export enum SettingType {
     SEISMIC_DEPTH_SLICE = "seismicDepthSlice",
     SEISMIC_DATA_TYPE = "seismicDataType",
     SEISMIC_SURVEY_TYPE = "seismicSurveyType",
+    INTERSECTION_EXTENSION_LENGTH = "intersectionExtensionLength",
 }

@@ -1,4 +1,4 @@
-import { SeismicFencePolyline_api, getWellTrajectoriesOptions } from "@api";
+import { getWellTrajectoriesOptions } from "@api";
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { Vec2, normalizeVec2, point2Distance } from "@lib/utils/vec2";
 import { QueryClient } from "@tanstack/query-core";
@@ -6,6 +6,8 @@ import { QueryClient } from "@tanstack/query-core";
 import { ItemDelegate } from "../LayerFramework/delegates/ItemDelegate";
 import { IntersectionSettingValue } from "../LayerFramework/settings/implementations/IntersectionSetting";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "../utils/wellbore";
+
+export const CURVE_FITTING_EPSILON = 5; // meter
 
 /**
  * Make promise with polyline XY UTM coordinates for requested delegate and intersection setting value.
@@ -15,7 +17,9 @@ import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "../utils/well
 export function makeIntersectionPolylineXyUtmPromiseForDelegate(
     intersection: IntersectionSettingValue,
     itemDelegate: ItemDelegate,
-    queryClient: QueryClient
+    queryClient: QueryClient,
+    intersectionExtensionLength = 0,
+    curveFittingEpsilon = CURVE_FITTING_EPSILON
 ): Promise<number[]> {
     const makePolylinePromise = new Promise<number[]>((resolve) => {
         if (intersection.type === "wellbore") {
@@ -47,8 +51,8 @@ export function makeIntersectionPolylineXyUtmPromiseForDelegate(
                     polylineUtmXy.push(
                         ...calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
                             path,
-                            0,
-                            5
+                            intersectionExtensionLength,
+                            curveFittingEpsilon
                         ).simplifiedWellboreTrajectoryXy.flat()
                     );
 
@@ -79,17 +83,13 @@ export function makeIntersectionPolylineXyUtmPromiseForDelegate(
 }
 
 /**
- * Create resampled seismic fence polyline from polyline XY UTM coordinates.
+ * Create resampled polyline XY UTM coordinates.
  *
- * Takes a polyline xy utm coordinates and a sample step and returns a resampled seismic fence polyline,
+ * Takes a polyline xy utm coordinates and a sample step and returns a resampled polyline xy utm coordinates,
  * where the sample step is the distance between each point in the resampled polyline.
  */
-export function createResampledSeismicFencePolyline(
-    polylineXyUtm: number[],
-    sampleStep: number
-): SeismicFencePolyline_api {
-    const xPoints: number[] = [];
-    const yPoints: number[] = [];
+export function createResampledPolylineXyUtm(polylineXyUtm: number[], sampleStep: number): number[] {
+    const resampledPolyline: number[] = [];
     const limitedSampleStep = Math.max(1, sampleStep);
 
     for (let i = 0; i < polylineXyUtm.length; i += 2) {
@@ -106,14 +106,14 @@ export function createResampledSeismicFencePolyline(
             const normalizedVector = normalizeVec2(vector);
 
             for (let p = 1; p <= numPoints; p++) {
-                xPoints.push(polylineXyUtm[i - 2] + normalizedVector.x * limitedSampleStep * p);
-                yPoints.push(polylineXyUtm[i - 1] + normalizedVector.y * limitedSampleStep * p);
+                resampledPolyline.push(polylineXyUtm[i - 2] + normalizedVector.x * limitedSampleStep * p);
+                resampledPolyline.push(polylineXyUtm[i - 1] + normalizedVector.y * limitedSampleStep * p);
             }
         }
 
-        xPoints.push(polylineXyUtm[i]);
-        yPoints.push(polylineXyUtm[i + 1]);
+        resampledPolyline.push(polylineXyUtm[i]);
+        resampledPolyline.push(polylineXyUtm[i + 1]);
     }
 
-    return { x_points: xPoints, y_points: yPoints };
+    return resampledPolyline;
 }

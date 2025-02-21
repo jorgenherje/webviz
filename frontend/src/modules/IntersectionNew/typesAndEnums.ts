@@ -6,3 +6,8 @@ export type WellboreHeader = {
     depthReferencePoint: string;
     depthReferenceElevation: number;
 };
+
+export enum PreferredViewLayout {
+    HORIZONTAL = "horizontal",
+    VERTICAL = "vertical",
+}

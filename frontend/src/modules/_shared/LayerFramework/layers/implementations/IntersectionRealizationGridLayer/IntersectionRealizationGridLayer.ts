@@ -2,7 +2,7 @@ import { postGetPolylineIntersectionOptions } from "@api";
 import {
     PolylineIntersection_trans,
     transformPolylineIntersection,
-} from "@modules/_shared/Intersection/gridIntersection";
+} from "@modules/_shared/Intersection/gridIntersectionTransform";
 import { makeIntersectionPolylineXyUtmPromiseForDelegate } from "@modules/_shared/Intersection/intersectionPolylineUtils";
 import { ItemDelegate } from "@modules/_shared/LayerFramework/delegates/ItemDelegate";
 import { LayerColoringType, LayerDelegate } from "@modules/_shared/LayerFramework/delegates/LayerDelegate";

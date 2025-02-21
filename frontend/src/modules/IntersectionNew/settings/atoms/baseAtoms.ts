@@ -1,21 +1,8 @@
-import { IntersectionType } from "@framework/types/intersection";
-import { ColorScale } from "@lib/utils/ColorScale";
+import { PreferredViewLayout } from "@modules/IntersectionNew/typesAndEnums";
+import { LayerManager } from "@modules/_shared/LayerFramework/framework/LayerManager/LayerManager";
 
 import { atom } from "jotai";
 
-export const addCustomIntersectionPolylineEditModeActiveAtom = atom<boolean>(false);
-export const editCustomIntersectionPolylineEditModeActiveAtom = atom<boolean>(false);
-
-export const currentCustomIntersectionPolylineAtom = atom<number[][]>([]);
-
-export const showGridlinesAtom = atom<boolean>(false);
-export const gridLayerAtom = atom<number>(1);
-export const zFactorAtom = atom<number>(1);
-export const intersectionExtensionLengthAtom = atom<number>(1000);
-export const intersectionTypeAtom = atom<IntersectionType>(IntersectionType.WELLBORE);
-export const seismicColorScaleAtom = atom<ColorScale | null>(null);
-export const showSeismicAtom = atom<boolean>(false);
-
 export const userSelectedFieldIdentifierAtom = atom<string | null>(null);
-export const userSelectedWellboreUuidAtom = atom<string | null>(null);
-export const userSelectedCustomIntersectionPolylineIdAtom = atom<string | null>(null);
+export const layerManagerAtom = atom<LayerManager | null>(null);
+export const preferredViewLayoutAtom = atom<PreferredViewLayout>(PreferredViewLayout.VERTICAL);
