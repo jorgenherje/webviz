@@ -1,9 +1,10 @@
 import { point2Distance } from "@lib/utils/vec2";
 import { SeismicPolylineAndFenceData } from "@modules/_shared/Intersection/seismicIntersectionTransform";
 import { createPolylineXyFromSeismicFencePolyline } from "@modules/_shared/Intersection/seismicIntersectionUtils";
+import { IntersectionRealizationObservedSeismicSettings } from "@modules/_shared/LayerFramework/layers/implementations/IntersectionRealizationObservedSeismicLayer";
 import { IntersectionRealizationSimulatedSeismicSettings } from "@modules/_shared/LayerFramework/layers/implementations/IntersectionRealizationSimulatedSeismicLayer";
 import { VisualizationFunctionArgs } from "@modules/_shared/LayerFramework/visualization/VisualizationFactory";
-import { SeismicLayer } from "@modules/_shared/components/EsvIntersection/layers/SeismicLayer";
+import { LayerItem, LayerType } from "@modules/_shared/components/EsvIntersection";
 
 /**
  * Make a trajectory in the uz-plane of a fence made from a polyline in the xy-plane of a
@@ -43,16 +44,9 @@ function makeTrajectoryFenceProjectionFromPolylineXy(
     return trajectoryFenceProjection;
 }
 
-export function makeIntersectionRealizationSimulatedSeismicLayer({
-    id,
-    name,
-    data,
-    colorScale,
-    settings,
-}: VisualizationFunctionArgs<
-    IntersectionRealizationSimulatedSeismicSettings,
-    SeismicPolylineAndFenceData
->): SeismicLayer {
+export function makeIntersectionRealizationSeismicLayerItemOfType<
+    T extends IntersectionRealizationSimulatedSeismicSettings | IntersectionRealizationObservedSeismicSettings
+>({ id, name, data, colorScale, settings }: VisualizationFunctionArgs<T, SeismicPolylineAndFenceData>): LayerItem {
     const fenceData = data.fenceData;
 
     // TODO: Add sample resolution as a setting?
@@ -64,19 +58,24 @@ export function makeIntersectionRealizationSimulatedSeismicLayer({
         settings.intersectionExtensionLength ?? 0
     );
 
-    const seismicIntersectionLayer = new SeismicLayer(id, {
-        data: {
-            propertyName: name, // Attribute name?
-            propertyUnit: "",
-            minFenceDepth: fenceData.max_fence_depth,
-            maxFenceDepth: fenceData.min_fence_depth,
-            numSamplesPerTrace: fenceData.num_samples_per_trace,
-            numTraces: fenceData.num_traces,
-            fenceTracesArray: fenceData.fenceTracesFloat32Arr,
-            trajectoryFenceProjection: trajectoryFenceProjection,
-            colorScale: colorScale,
+    // The layer has to be created inside EsvIntersection, so we need to return a LayerItem
+    const seismicIntersectionLayerItem: LayerItem = {
+        id,
+        type: LayerType.SEISMIC,
+        options: {
+            data: {
+                propertyName: name, // Attribute name?
+                propertyUnit: "",
+                minFenceDepth: fenceData.max_fence_depth,
+                maxFenceDepth: fenceData.min_fence_depth,
+                numSamplesPerTrace: fenceData.num_samples_per_trace,
+                numTraces: fenceData.num_traces,
+                fenceTracesArray: fenceData.fenceTracesFloat32Arr,
+                trajectoryFenceProjection: trajectoryFenceProjection,
+                colorScale: colorScale,
+            },
         },
-    });
+    };
 
-    return seismicIntersectionLayer;
+    return seismicIntersectionLayerItem;
 }

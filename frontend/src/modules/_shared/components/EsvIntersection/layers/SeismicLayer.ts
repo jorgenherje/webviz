@@ -4,6 +4,7 @@ import {
     OnRescaleEvent,
     OnUpdateEvent,
     SeismicCanvasDataOptions,
+    SeismicInfo,
     findIndexOfSample,
     getSeismicInfo,
     getSeismicOptions,
@@ -31,7 +32,7 @@ import { Rgb, parse } from "culori";
 // };
 
 // Options for generating seismic slice image using generateSeismicSliceImage
-type SeismicSliceImageOptions = {
+export type SeismicSliceImageOptions = {
     datapoints: number[][];
     yAxisValues: number[];
     trajectory: number[][];
@@ -53,6 +54,11 @@ export type SeismicLayerData = {
 export class SeismicLayer extends CanvasLayer<SeismicLayerData> {
     private _image: ImageBitmap | null = null;
     private _canvasDataOptions: SeismicCanvasDataOptions | null = null;
+    private _seismicInfo: SeismicInfo | null = null;
+
+    getSeismicInfo(): SeismicInfo | null {
+        return this._seismicInfo;
+    }
 
     override onMount(event: OnMountEvent): void {
         super.onMount(event);
@@ -62,7 +68,7 @@ export class SeismicLayer extends CanvasLayer<SeismicLayerData> {
         super.onUpdate(event);
 
         if (!event.data) {
-            throw new Error("No data available for seismic fence.");
+            return;
         }
 
         // Create seismic info and canvas data options
@@ -76,8 +82,8 @@ export class SeismicLayer extends CanvasLayer<SeismicLayerData> {
             event.data.minFenceDepth,
             event.data.maxFenceDepth
         );
-        const seismicInfo = getSeismicInfo({ datapoints, yAxisValues }, event.data.trajectoryFenceProjection);
-        this._canvasDataOptions = getSeismicOptions(seismicInfo);
+        this._seismicInfo = getSeismicInfo({ datapoints, yAxisValues }, event.data.trajectoryFenceProjection);
+        this._canvasDataOptions = getSeismicOptions(this._seismicInfo);
 
         // Create image
         const seismicSliceImageOptions: SeismicSliceImageOptions = {
