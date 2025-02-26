@@ -1,5 +1,6 @@
 import React from "react";
 
+import { IntersectionType } from "@framework/types/intersection";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 import { RadioGroup } from "@lib/components/RadioGroup";
 
@@ -9,7 +10,7 @@ import { SettingRegistry } from "../SettingRegistry";
 import { SettingType } from "../settingsTypes";
 
 export type IntersectionSettingValue = {
-    type: "wellbore" | "polyline";
+    type: IntersectionType;
     name: string;
     uuid: string;
 };
@@ -43,7 +44,7 @@ export class IntersectionSetting implements Setting<IntersectionSettingValue | n
 
     fixupValue(availableValues: any[], currentValue: IntersectionSettingValue | null): IntersectionSettingValue | null {
         if (currentValue === null) {
-            return availableValues.find((v) => v.type === "wellbore") ?? null;
+            return availableValues.find((v) => v.type === IntersectionType.WELLBORE) ?? null;
         }
 
         if (availableValues.some((v) => v.uuid === currentValue.uuid && v.type === currentValue.type)) {
@@ -55,13 +56,13 @@ export class IntersectionSetting implements Setting<IntersectionSettingValue | n
 
     makeComponent(): (props: SettingComponentProps<IntersectionSettingValue | null>) => React.ReactNode {
         return function Realization(props: SettingComponentProps<IntersectionSettingValue | null>) {
-            const [type, setType] = React.useState<IntersectionSettingValue["type"]>(props.value?.type ?? "wellbore");
+            const [type, setType] = React.useState<IntersectionType>(props.value?.type ?? IntersectionType.WELLBORE);
             function handleSelectionChange(selectedValue: string) {
                 const newValue = props.availableValues.find((v) => v.uuid === selectedValue) ?? null;
                 props.onValueChange(newValue);
             }
 
-            function handleCategoryChange(_: any, value: IntersectionSettingValue["type"]) {
+            function handleCategoryChange(_: any, value: IntersectionType) {
                 setType(value);
                 const firstValue = props.availableValues.find((v) => v.type === value);
                 if (firstValue) {
@@ -89,11 +90,11 @@ export class IntersectionSetting implements Setting<IntersectionSettingValue | n
                         options={[
                             {
                                 label: "Wellbore",
-                                value: "wellbore",
+                                value: IntersectionType.WELLBORE,
                             },
                             {
                                 label: "Polyline",
-                                value: "polyline",
+                                value: IntersectionType.CUSTOM_POLYLINE,
                             },
                         ]}
                         value={type}

@@ -7,6 +7,7 @@ import {
 } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { IntersectionPolyline, IntersectionPolylinesEvent } from "@framework/userCreatedItems/IntersectionPolylines";
+import { IntersectionSelection } from "@modules/_shared/components/IntersectionSelector/intersectionSelector";
 import { QueryClient } from "@tanstack/react-query";
 
 import { isEqual } from "lodash";
@@ -40,6 +41,10 @@ export type GlobalSettings = {
     ensembles: readonly RegularEnsemble[];
     realizationFilterFunction: EnsembleRealizationFilterFunction;
     intersectionPolylines: IntersectionPolyline[];
+
+    // Note: This represents a global intersection selection, not an IntersectionSetting per layer.
+    // Although the data is theoretically the same, this applies to multiple layers without being a synched setting.
+    intersectionSelection: IntersectionSelection | null;
 };
 
 /*
@@ -212,6 +217,7 @@ export class LayerManager implements Group, PublishSubscribe<LayerManagerTopicPa
                 .getUserCreatedItems()
                 .getIntersectionPolylines()
                 .getPolylines(),
+            intersectionSelection: null,
         };
     }
 

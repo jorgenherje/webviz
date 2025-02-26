@@ -1,8 +1,9 @@
 import React from "react";
 
-import { Layer } from "@equinor/esv-intersection";
+import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ViewContext } from "@framework/ModuleContext";
 import { useViewStatusWriter } from "@framework/StatusWriter";
+import { WorkbenchServices } from "@framework/WorkbenchServices";
 import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { useElementSize } from "@lib/hooks/useElementSize";
@@ -45,9 +46,12 @@ VISUALIZATION_FACTORY.registerVisualizationFunction(
 export type LayersWrapperProps = {
     layerManager: LayerManager;
     preferredViewLayout: PreferredViewLayout;
+    intersectionReferenceSystem: IntersectionReferenceSystem | null;
+    wellboreHeaderUuid: string | null;
     viewContext: ViewContext<Interfaces>;
     workbenchSession: WorkbenchSession;
     workbenchSettings: WorkbenchSettings;
+    workbenchServices: WorkbenchServices;
 };
 
 export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
@@ -72,7 +76,11 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
         statusWriter.setLoading(true);
     }
 
-    const layerItems = viewerLayers.toSorted((a, b) => b.position - a.position).map((layer) => layer.layer);
+    const tmp = viewsAndLayers.layers.at(0)?.dataLayer.settings;
+
+    const visualizationLayers = viewerLayers
+        .toSorted((a, b) => b.position - a.position)
+        .map((layer) => layer.visualizationLayer);
 
     const colorScales: { id: string; colorScale: ColorScale }[] = [];
     for (const layerItem of layerItems) {
@@ -85,13 +93,20 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
         colorScales.push({ id: `${layerItem.id}-${colorScale.getColorPalette().getId()}`, colorScale });
     }
 
+    const boundingBox = viewsAndLayers.boundingBox;
+    // TODO: Project bounding box s.t. x is projected as u, and y will be the z-coordinate in intersection
+    const bounds: { x: [number, number]; y: [number, number] } = boundingBox
+        ? { x: boundingBox.x, y: boundingBox.z }
+        : { x: [0, 0], y: [0, 0] };
+
     return (
         <div ref={mainDivRef} className="relative w-full h-full flex flex-col">
             <div style={{ height: mainDivSize.height, width: mainDivSize.width }}>
                 <ViewportWrapper
-                    referenceSystem={props.referenceSystem ?? undefined}
-                    layers={layerItems}
-                    layerIdToNameMap={esvLayerIdToNameMap}
+                    referenceSystem={props.intersectionReferenceSystem ?? undefined}
+                    layers={visualizationLayers}
+                    // layerIdToNameMap={esvLayerIdToNameMap}
+                    layerIdToNameMap={{}}
                     bounds={bounds}
                     viewport={viewport}
                     workbenchServices={props.workbenchServices}

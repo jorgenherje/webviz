@@ -17,20 +17,6 @@ import {
 
 import { Rgb, parse } from "culori";
 
-// Note: This type does not extend SeismicCanvasData because we want to generate the image and seismic info
-// inside this render due to async seismic slice image generation
-// export type SeismicLayerData = SeismicCanvasData & {
-//     minFenceDepth: number;
-//     maxFenceDepth: number;
-//     minFenceX: number;
-//     maxFenceX: number;
-//     numTraces: number;
-//     numSamplesPerTrace: number;
-//     fenceTracesFloat32Array: Float32Array;
-//     propertyName: string;
-//     propertyUnit: string;
-// };
-
 // Options for generating seismic slice image using generateSeismicSliceImage
 export type SeismicSliceImageOptions = {
     datapoints: number[][];
@@ -39,6 +25,8 @@ export type SeismicSliceImageOptions = {
     colorScale: ColorScale;
 };
 
+// Note: This type does not extend SeismicCanvasData because we want to generate the image and seismic info
+// inside this render due to async seismic slice image generation
 export type SeismicLayerData = {
     minFenceDepth: number;
     maxFenceDepth: number;

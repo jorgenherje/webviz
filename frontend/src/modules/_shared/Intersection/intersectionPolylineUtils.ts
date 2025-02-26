@@ -1,10 +1,11 @@
 import { getWellTrajectoriesOptions } from "@api";
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
-import { Vec2, normalizeVec2, point2Distance } from "@lib/utils/vec2";
+import { IntersectionType } from "@framework/types/intersection";
+import { Vec2, normalizeVec2, point2Distance, vec2FromArray } from "@lib/utils/vec2";
 import { QueryClient } from "@tanstack/query-core";
 
 import { ItemDelegate } from "../LayerFramework/delegates/ItemDelegate";
-import { IntersectionSettingValue } from "../LayerFramework/settings/implementations/IntersectionSetting";
+import { IntersectionSelection } from "../components/IntersectionSelector/intersectionSelector";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "../utils/wellbore";
 
 export const CURVE_FITTING_EPSILON = 5; // meter
@@ -14,15 +15,15 @@ export const CURVE_FITTING_EPSILON = 5; // meter
  *
  * Returns promise with array of polyline XY UTM coordinates.
  */
-export function makeIntersectionPolylineXyUtmPromiseForDelegate(
-    intersection: IntersectionSettingValue,
+export function makeIntersectionPolylinePromiseForDelegate(
+    intersectionSelection: IntersectionSelection,
     itemDelegate: ItemDelegate,
     queryClient: QueryClient,
     intersectionExtensionLength = 0,
     curveFittingEpsilon = CURVE_FITTING_EPSILON
-): Promise<number[]> {
-    const makePolylinePromise = new Promise<number[]>((resolve) => {
-        if (intersection.type === "wellbore") {
+): Promise<{ polylineUtmXy: number[]; actualSectionLengths: number[] }> {
+    const makePolylinePromise = new Promise<{ polylineUtmXy: number[]; actualSectionLengths: number[] }>((resolve) => {
+        if (intersectionSelection.type === IntersectionType.WELLBORE) {
             const fieldIdentifier = itemDelegate.getLayerManager().getGlobalSetting("fieldId");
 
             return queryClient
@@ -30,7 +31,7 @@ export function makeIntersectionPolylineXyUtmPromiseForDelegate(
                     ...getWellTrajectoriesOptions({
                         query: {
                             field_identifier: fieldIdentifier ?? "",
-                            wellbore_uuids: [intersection.uuid],
+                            wellbore_uuids: [intersectionSelection.uuid],
                         },
                     }),
                 })
@@ -47,16 +48,14 @@ export function makeIntersectionPolylineXyUtmPromiseForDelegate(
                     const intersectionReferenceSystem = new IntersectionReferenceSystem(path);
                     intersectionReferenceSystem.offset = offset;
 
-                    const polylineUtmXy: number[] = [];
-                    polylineUtmXy.push(
-                        ...calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
-                            path,
-                            intersectionExtensionLength,
-                            curveFittingEpsilon
-                        ).simplifiedWellboreTrajectoryXy.flat()
+                    const simplifiedWellboreTrajectory = calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
+                        path,
+                        intersectionExtensionLength,
+                        curveFittingEpsilon
                     );
-
-                    resolve(polylineUtmXy);
+                    const polylineUtmXy = simplifiedWellboreTrajectory.simplifiedWellboreTrajectoryXy.flat();
+                    const actualSectionLengths = simplifiedWellboreTrajectory.actualSectionLengths;
+                    resolve({ polylineUtmXy, actualSectionLengths });
                 });
         } else {
             const intersectionPolyline = itemDelegate
@@ -64,18 +63,23 @@ export function makeIntersectionPolylineXyUtmPromiseForDelegate(
                 .getWorkbenchSession()
                 .getUserCreatedItems()
                 .getIntersectionPolylines()
-                .getPolyline(intersection.uuid);
+                .getPolyline(intersectionSelection.uuid);
             if (!intersectionPolyline) {
-                resolve([]);
+                resolve({ polylineUtmXy: [], actualSectionLengths: [] });
                 return;
             }
 
             const polylineUtmXy: number[] = [];
-            for (const point of intersectionPolyline.path) {
+            const actualSectionLengths: number[] = [];
+            for (const [index, point] of intersectionPolyline.path.entries()) {
                 polylineUtmXy.push(point[0], point[1]);
+                if (index > 0) {
+                    const previousPoint = intersectionPolyline.path[index - 1];
+                    actualSectionLengths.push(point2Distance(vec2FromArray(point), vec2FromArray(previousPoint)));
+                }
             }
 
-            resolve(polylineUtmXy);
+            resolve({ polylineUtmXy, actualSectionLengths });
         }
     });
 

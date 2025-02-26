@@ -1,4 +1,4 @@
-import { SeismicFenceData_api, SeismicFencePolyline_api } from "@api";
+import { SeismicFenceData_api } from "@api";
 
 import { b64DecodeFloatArrayToFloat32 } from "../base64";
 
@@ -8,8 +8,14 @@ export type SeismicFenceData_trans = Omit<SeismicFenceData_api, "fence_traces_b6
 };
 
 export type SeismicPolylineAndFenceData = {
-    seismicFencePolylineUtm: SeismicFencePolyline_api;
+    sourcePolyline: SeismicFencePolyline;
+    fencePolylineUtmXy: number[];
     fenceData: SeismicFenceData_trans;
+};
+
+export type SeismicFencePolyline = {
+    polylineUtmXy: number[];
+    actualSectionLengths: number[];
 };
 
 /**
@@ -18,15 +24,17 @@ export type SeismicPolylineAndFenceData = {
  * The transformed fence data is decoded from base64 to a Float32Array.
  */
 export function createTransformedSeismicPolylineAndFenceData(
-    seismicFencePolylineUtm: SeismicFencePolyline_api,
-    apiData: SeismicFenceData_api
+    sourcePolyline: SeismicFencePolyline,
+    fencePolylineUtmXy: number[],
+    fenceApiData: SeismicFenceData_api
 ): SeismicPolylineAndFenceData {
-    const { fence_traces_b64arr, ...untransformedData } = apiData;
+    const { fence_traces_b64arr, ...untransformedData } = fenceApiData;
 
     const dataFloat32Arr = b64DecodeFloatArrayToFloat32(fence_traces_b64arr);
 
     return {
-        seismicFencePolylineUtm: seismicFencePolylineUtm,
+        sourcePolyline: sourcePolyline,
+        fencePolylineUtmXy: fencePolylineUtmXy,
         fenceData: {
             ...untransformedData,
             fenceTracesFloat32Arr: dataFloat32Arr,

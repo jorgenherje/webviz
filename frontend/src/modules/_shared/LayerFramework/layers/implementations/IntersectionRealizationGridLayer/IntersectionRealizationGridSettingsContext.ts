@@ -1,4 +1,5 @@
 import { getDrilledWellboreHeadersOptions, getGridModelsInfoOptions } from "@api";
+import { IntersectionType } from "@framework/types/intersection";
 import { SettingsContextDelegate } from "@modules/_shared/LayerFramework/delegates/SettingsContextDelegate";
 import { LayerManager } from "@modules/_shared/LayerFramework/framework/LayerManager/LayerManager";
 import { DefineDependenciesArgs, SettingsContext } from "@modules/_shared/LayerFramework/interfaces";
@@ -167,7 +168,7 @@ export class IntersectionRealizationGridSettingsContext
             const intersectionOptions: IntersectionSettingValue[] = [];
             for (const wellboreHeader of wellboreHeaders) {
                 intersectionOptions.push({
-                    type: "wellbore",
+                    type: IntersectionType.WELLBORE,
                     name: wellboreHeader.uniqueWellboreIdentifier,
                     uuid: wellboreHeader.wellboreUuid,
                 });
@@ -175,7 +176,7 @@ export class IntersectionRealizationGridSettingsContext
 
             for (const polyline of intersectionPolylines) {
                 intersectionOptions.push({
-                    type: "polyline",
+                    type: IntersectionType.CUSTOM_POLYLINE,
                     name: polyline.name,
                     uuid: polyline.id,
                 });

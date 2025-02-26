@@ -1,7 +1,7 @@
 import { postGetSeismicFenceOptions } from "@api";
 import {
     createResampledPolylineXyUtm,
-    makeIntersectionPolylineXyUtmPromiseForDelegate,
+    makeIntersectionPolylinePromiseForDelegate,
 } from "@modules/_shared/Intersection/intersectionPolylineUtils";
 import {
     SeismicPolylineAndFenceData,
@@ -62,8 +62,19 @@ export class IntersectionRealizationObservedSeismicLayer
             return null;
         }
 
-        // TODO: Implement bounding box calculation
-        return null;
+        // TODO: Consider using source polyline, as it has samples?
+        const xArray = data.fencePolylineUtmXy.filter((_, i) => i % 2 === 0);
+        const yArray = data.fencePolylineUtmXy.filter((_, i) => i % 2 === 1);
+
+        const [minX, maxX] = xArray.length === 0 ? [0, 0] : [Math.min(...xArray), Math.max(...xArray)];
+        const [minY, maxY] = yArray.length === 0 ? [0, 0] : [Math.min(...yArray), Math.max(...yArray)];
+        const [minZ, maxZ] = [data.fenceData.min_fence_depth, data.fenceData.max_fence_depth];
+
+        return {
+            x: [minX, maxX],
+            y: [minY, maxY],
+            z: [minZ, maxZ],
+        };
     }
 
     makeValueRange(): [number, number] | null {
@@ -80,18 +91,19 @@ export class IntersectionRealizationObservedSeismicLayer
         const settings = this.getSettingsContext().getDelegate().getSettings();
         const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
         const realization = settings[SettingType.REALIZATION].getDelegate().getValue();
-        const intersection = settings[SettingType.INTERSECTION].getDelegate().getValue();
         const attribute = settings[SettingType.ATTRIBUTE].getDelegate().getValue();
         const timeOrInterval = settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue();
         const intersectionExtensionLength = settings[SettingType.INTERSECTION_EXTENSION_LENGTH]
             .getDelegate()
             .getValue();
 
+        const intersectionSelection = this._itemDelegate.getLayerManager().getGlobalSetting("intersectionSelection");
+
         const queryKey = [
             "gridIntersection",
             ensembleIdent,
             realization,
-            intersection,
+            intersectionSelection,
             attribute,
             timeOrInterval,
             intersectionExtensionLength,
@@ -99,45 +111,51 @@ export class IntersectionRealizationObservedSeismicLayer
         this._layerDelegate.registerQueryKey(queryKey);
 
         // If no intersection is selected, return an empty polyline
-        let makePolylineXyUtmPromise: Promise<number[]> = new Promise((resolve) => {
-            resolve([]);
-        });
-        if (intersection) {
-            makePolylineXyUtmPromise = makeIntersectionPolylineXyUtmPromiseForDelegate(
-                intersection,
-                this._itemDelegate,
-                queryClient,
-                intersectionExtensionLength ?? 0
-            );
-        }
+        const makePolylinePromise = intersectionSelection
+            ? makeIntersectionPolylinePromiseForDelegate(
+                  intersectionSelection,
+                  this._itemDelegate,
+                  queryClient,
+                  intersectionExtensionLength ?? 0
+              )
+            : new Promise<{
+                  polylineUtmXy: number[];
+                  actualSectionLengths: number[];
+              }>((resolve) => resolve({ polylineUtmXy: [], actualSectionLengths: [] }));
 
         // TODO: Add control of resampling resolution?
         const resolution = 1;
 
-        const seismicPolylineAndFenceDataPromise = makePolylineXyUtmPromise
-            .then((polylineXyUtm) => createResampledPolylineXyUtm(polylineXyUtm, resolution))
+        const resampledPolylineXyUtmPromise = makePolylinePromise.then((polyline) =>
+            createResampledPolylineXyUtm(polyline.polylineUtmXy, resolution)
+        );
+        const seismicFenceApiDataPromise = resampledPolylineXyUtmPromise
             .then((resampledPolylineXyUtm) => createSeismicFencePolylineFromPolylineXy(resampledPolylineXyUtm))
             .then((seismicFencePolylineUtm) =>
-                queryClient
-                    .fetchQuery({
-                        ...postGetSeismicFenceOptions({
-                            query: {
-                                case_uuid: ensembleIdent?.getCaseUuid() ?? "",
-                                ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
-                                realization_num: realization ?? 0,
-                                seismic_attribute: attribute ?? "",
-                                time_or_interval_str: timeOrInterval ?? "",
-                                observed: true, // Set true for observed seismic layer
-                            },
-                            body: {
-                                polyline: seismicFencePolylineUtm,
-                            },
-                        }),
-                    })
-                    .then((apiData) => {
-                        return createTransformedSeismicPolylineAndFenceData(seismicFencePolylineUtm, apiData);
-                    })
+                queryClient.fetchQuery({
+                    ...postGetSeismicFenceOptions({
+                        query: {
+                            case_uuid: ensembleIdent?.getCaseUuid() ?? "",
+                            ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
+                            realization_num: realization ?? 0,
+                            seismic_attribute: attribute ?? "",
+                            time_or_interval_str: timeOrInterval ?? "",
+                            observed: true, // Set true for observed seismic layer
+                        },
+                        body: {
+                            polyline: seismicFencePolylineUtm,
+                        },
+                    }),
+                })
             );
+
+        const seismicPolylineAndFenceDataPromise = Promise.all([
+            makePolylinePromise,
+            resampledPolylineXyUtmPromise,
+            seismicFenceApiDataPromise,
+        ]).then(([polyline, resampledPolylineXyUtm, apiData]) => {
+            return createTransformedSeismicPolylineAndFenceData(polyline, resampledPolylineXyUtm, apiData);
+        });
 
         return seismicPolylineAndFenceDataPromise;
     }

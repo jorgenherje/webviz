@@ -19,25 +19,6 @@ export function createSeismicFencePolylineFromPolylineXy(polylineXy: number[]): 
 }
 
 /**
- * Create polyline xy coordinates array from seismic fence polyline object.
- *
- * Takes a seismic fence polyline object and returns a polyline xy coordinates array,
- * where the x and y coordinates are interleaved.
- */
-export function createPolylineXyFromSeismicFencePolyline(polyline: SeismicFencePolyline_api): number[] {
-    if (polyline.x_points.length !== polyline.y_points.length) {
-        throw new Error("The number of x and y points in the polyline must be equal.");
-    }
-
-    const polylineXy: number[] = [];
-    for (let i = 0; i < polyline.x_points.length; i++) {
-        polylineXy.push(polyline.x_points[i], polyline.y_points[i]);
-    }
-
-    return polylineXy;
-}
-
-/**
  * Utility function to convert the 1D array of values from the fence data to a 2D array of values
  * for the seismic slice image.
  *

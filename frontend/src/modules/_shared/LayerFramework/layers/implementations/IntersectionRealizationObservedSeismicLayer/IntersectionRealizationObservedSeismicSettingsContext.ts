@@ -5,7 +5,6 @@ import { DefineDependenciesArgs, SettingsContext } from "@modules/_shared/LayerF
 import { AttributeSetting } from "@modules/_shared/LayerFramework/settings/implementations/AttributeSetting";
 import { EnsembleSetting } from "@modules/_shared/LayerFramework/settings/implementations/EnsembleSetting";
 import { IntersectionExtensionLengthSetting } from "@modules/_shared/LayerFramework/settings/implementations/IntersectionExtensionLengthSetting";
-import { IntersectionSetting } from "@modules/_shared/LayerFramework/settings/implementations/IntersectionSetting";
 import { RealizationSetting } from "@modules/_shared/LayerFramework/settings/implementations/RealizationSetting";
 import { TimeOrIntervalSetting } from "@modules/_shared/LayerFramework/settings/implementations/TimeOrIntervalSetting";
 import { SettingType } from "@modules/_shared/LayerFramework/settings/settingsTypes";
@@ -22,7 +21,6 @@ export class IntersectionRealizationObservedSeismicSettingsContext
             this,
             layerManager,
             {
-                [SettingType.INTERSECTION]: new IntersectionSetting(),
                 [SettingType.ENSEMBLE]: new EnsembleSetting(),
                 [SettingType.REALIZATION]: new RealizationSetting(),
                 [SettingType.ATTRIBUTE]: new AttributeSetting(),
@@ -34,7 +32,6 @@ export class IntersectionRealizationObservedSeismicSettingsContext
 
     areCurrentSettingsValid(settings: IntersectionRealizationObservedSeismicSettings): boolean {
         return (
-            settings[SettingType.INTERSECTION] !== null &&
             settings[SettingType.ENSEMBLE] !== null &&
             settings[SettingType.REALIZATION] !== null &&
             settings[SettingType.ATTRIBUTE] !== null &&

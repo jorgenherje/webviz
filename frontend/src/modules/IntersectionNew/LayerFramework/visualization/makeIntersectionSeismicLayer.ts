@@ -1,6 +1,5 @@
 import { point2Distance } from "@lib/utils/vec2";
 import { SeismicPolylineAndFenceData } from "@modules/_shared/Intersection/seismicIntersectionTransform";
-import { createPolylineXyFromSeismicFencePolyline } from "@modules/_shared/Intersection/seismicIntersectionUtils";
 import { IntersectionRealizationObservedSeismicSettings } from "@modules/_shared/LayerFramework/layers/implementations/IntersectionRealizationObservedSeismicLayer";
 import { IntersectionRealizationSimulatedSeismicSettings } from "@modules/_shared/LayerFramework/layers/implementations/IntersectionRealizationSimulatedSeismicLayer";
 import { VisualizationFunctionArgs } from "@modules/_shared/LayerFramework/visualization/VisualizationFactory";
@@ -15,6 +14,7 @@ import { LayerItem, LayerType } from "@modules/_shared/components/EsvIntersectio
  */
 function makeTrajectoryFenceProjectionFromPolylineXy(
     polylineXyUtm: number[],
+    actualSectionLengths: number[],
     resolution: number,
     extensionLength: number
 ): number[][] {
@@ -30,11 +30,9 @@ function makeTrajectoryFenceProjectionFromPolylineXy(
             { x: polyline[i - 2], y: polyline[i - 1] }
         );
 
-        // TODO: What is "actualSectionLengths" needed for, isn't it just the distance?
-        // const actualDistance = this._settings.polyline.actualSectionLengths[i / 2 - 1];
-        // const scale = actualDistance / distance;
+        const actualDistance = actualSectionLengths[i / 2 - 1];
+        const scale = actualDistance / distance;
         const numPoints = Math.floor(distance / resolution) - 1;
-        const scale = 1;
 
         for (let p = 1; p <= numPoints; p++) {
             u += resolution * scale;
@@ -48,12 +46,13 @@ export function makeIntersectionRealizationSeismicLayerItemOfType<
     T extends IntersectionRealizationSimulatedSeismicSettings | IntersectionRealizationObservedSeismicSettings
 >({ id, name, data, colorScale, settings }: VisualizationFunctionArgs<T, SeismicPolylineAndFenceData>): LayerItem {
     const fenceData = data.fenceData;
+    const sourcePolyline = data.sourcePolyline;
 
     // TODO: Add sample resolution as a setting?
     const sampleResolution = 1;
-    const polylineXyUtm = createPolylineXyFromSeismicFencePolyline(data.seismicFencePolylineUtm);
     const trajectoryFenceProjection = makeTrajectoryFenceProjectionFromPolylineXy(
-        polylineXyUtm,
+        sourcePolyline.polylineUtmXy,
+        sourcePolyline.actualSectionLengths,
         sampleResolution,
         settings.intersectionExtensionLength ?? 0
     );

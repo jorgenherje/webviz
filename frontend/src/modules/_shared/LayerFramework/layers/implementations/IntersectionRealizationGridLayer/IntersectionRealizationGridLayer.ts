@@ -3,7 +3,7 @@ import {
     PolylineIntersection_trans,
     transformPolylineIntersection,
 } from "@modules/_shared/Intersection/gridIntersectionTransform";
-import { makeIntersectionPolylineXyUtmPromiseForDelegate } from "@modules/_shared/Intersection/intersectionPolylineUtils";
+import { makeIntersectionPolylinePromiseForDelegate } from "@modules/_shared/Intersection/intersectionPolylineUtils";
 import { ItemDelegate } from "@modules/_shared/LayerFramework/delegates/ItemDelegate";
 import { LayerColoringType, LayerDelegate } from "@modules/_shared/LayerFramework/delegates/LayerDelegate";
 import { LayerManager } from "@modules/_shared/LayerFramework/framework/LayerManager/LayerManager";
@@ -102,19 +102,16 @@ export class IntersectionRealizationGridLayer
         ];
         this._layerDelegate.registerQueryKey(queryKey);
 
-        let makePolylineXyUtmPromise: Promise<number[]> = new Promise((resolve) => {
-            resolve([]);
-        });
-        if (intersection) {
-            makePolylineXyUtmPromise = makeIntersectionPolylineXyUtmPromiseForDelegate(
-                intersection,
-                this._itemDelegate,
-                queryClient
-            );
-        }
+        // If no intersection is selected, return an empty polyline
+        const makePolylinePromise = intersection
+            ? makeIntersectionPolylinePromiseForDelegate(intersection, this._itemDelegate, queryClient)
+            : new Promise<{
+                  polylineUtmXy: number[];
+                  actualSectionLengths: number[];
+              }>((resolve) => resolve({ polylineUtmXy: [], actualSectionLengths: [] }));
 
-        const gridIntersectionPromise = makePolylineXyUtmPromise
-            .then((polyline_utm_xy) =>
+        const gridIntersectionPromise = makePolylinePromise
+            .then((polyline) =>
                 queryClient.fetchQuery({
                     ...postGetPolylineIntersectionOptions({
                         query: {
@@ -125,7 +122,7 @@ export class IntersectionRealizationGridLayer
                             parameter_time_or_interval_str: timeOrInterval,
                             realization_num: realizationNum ?? 0,
                         },
-                        body: { polyline_utm_xy },
+                        body: { polyline_utm_xy: polyline.polylineUtmXy },
                     }),
                 })
             )

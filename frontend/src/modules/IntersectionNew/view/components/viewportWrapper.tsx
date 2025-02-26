@@ -5,7 +5,7 @@ import { ViewContext } from "@framework/ModuleContext";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { WorkbenchServices } from "@framework/WorkbenchServices";
 import { Viewport } from "@framework/types/viewport";
-import { Interfaces } from "@modules/Intersection/interfaces";
+import { Interfaces } from "@modules/IntersectionNew/interfaces";
 import { LayerItem } from "@modules/_shared/components/EsvIntersection";
 import { Toolbar } from "@modules/_shared/components/EsvIntersection/utilityComponents/Toolbar";
 
