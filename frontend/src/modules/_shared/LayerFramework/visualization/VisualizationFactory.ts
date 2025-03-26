@@ -1,9 +1,9 @@
 import { Layer as DeckGlLayer } from "@deck.gl/core";
-import { Layer as EsvLayer } from "@equinor/esv-intersection";
 import { StatusMessage } from "@framework/ModuleInstanceStatusController";
 import { defaultColorPalettes, defaultContinuousSequentialColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { ColorScaleWithId } from "@modules/_shared/components/ColorLegendsContainer/colorLegendsContainer";
+import { LayerItem } from "@modules/_shared/components/EsvIntersection";
 import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 
 import { GroupDelegate } from "../delegates/GroupDelegate";
@@ -26,13 +26,15 @@ export type VisualizationFunctionArgs<TSettings extends Settings, TData> = {
     data: TData;
     colorScale: ColorScaleWithName;
     settings: TSettings;
+    getGlobalSetting: LayerManager["getGlobalSetting"];
     isLoading: boolean;
     predictedNextBoundingBox: BoundingBox | null;
 };
 
 export type TargetReturnTypes = {
     [VisualizationTarget.DECK_GL]: DeckGlLayer<any>;
-    [VisualizationTarget.ESV]: EsvLayer<any>;
+    // Each layer has to be made inside EsvIntersection with the same pixiApplication, therefore the return type is LayerItem and not EsvLayer<any>
+    [VisualizationTarget.ESV]: LayerItem[];
 };
 
 export type MakeVisualizationFunction<TSettings extends Settings, TData, TTarget extends VisualizationTarget> = (
@@ -192,6 +194,10 @@ export class VisualizationFactory<TTarget extends VisualizationTarget> {
             data: layer.getLayerDelegate().getData(),
             colorScale,
             settings: layer.getLayerDelegate().getSettingsContext().getDelegate().getValues(),
+            getGlobalSetting: layer
+                .getItemDelegate()
+                .getLayerManager()
+                .getGlobalSetting.bind(layer.getItemDelegate().getLayerManager()),
             isLoading: layer.getLayerDelegate().getStatus() === LayerStatus.LOADING,
             predictedNextBoundingBox: layer.getLayerDelegate().getPredictedBoundingBox(),
         });

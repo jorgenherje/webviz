@@ -4,6 +4,7 @@ export enum SettingType {
     STATISTIC_FUNCTION = "statisticFunction",
     SENSITIVITY = "sensitivity",
     SURFACE_NAME = "surfaceName",
+    SURFACE_NAMES = "surfaceNames",
     INTERSECTION = "intersection",
     ATTRIBUTE = "attribute",
     TIME_OR_INTERVAL = "timeOrInterval",
@@ -19,4 +20,10 @@ export enum SettingType {
     SEISMIC_INLINE = "seismicInline",
     SEISMIC_CROSSLINE = "seismicCrossline",
     SEISMIC_DEPTH_SLICE = "seismicDepthSlice",
+    SEISMIC_DATA_TYPE = "seismicDataType",
+    SEISMIC_SURVEY_TYPE = "seismicSurveyType",
+    SAMPLE_RESOLUTION_IN_METERS = "sampleResolutionInMeters",
+    INTERSECTION_EXTENSION_LENGTH = "intersectionExtensionLength",
+    WELLBORE_PICKS = "wellborePicks",
+    SMDA_INTERPRETER = "smdaInterpreter", // WELLBORE_PICK_INTERPRETER?
 }

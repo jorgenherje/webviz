@@ -106,6 +106,7 @@ export type LayerItem = {
     };
 }[keyof LayerOptionsMap] & {
     id: string;
+    name: string;
     hoverable?: boolean;
 };
 
@@ -421,9 +422,15 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
 
             newEsvController.zoomPanHandler.onRescale = function handleRescale(event: OnRescaleEvent) {
                 if (!automaticChanges.current) {
+                    // const k = event.transform.k || 1; // Prevent division by zero
                     const k = event.transform.k;
+                    if (k === 0 || Number.isNaN(k)) {
+                        return;
+                    }
+
                     const xSpan = newEsvController.zoomPanHandler.xSpan;
                     const displ = xSpan / k;
+
                     const unitsPerPixel = displ / event.width;
 
                     const dx0 = event.xBounds[0] - event.transform.x * unitsPerPixel;

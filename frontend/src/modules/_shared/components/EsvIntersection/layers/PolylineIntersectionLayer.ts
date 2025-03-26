@@ -75,8 +75,6 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
             return;
         }
 
-        // this.data?.colorScale.setRange(this.data.minGridPropValue, this.data.maxGridPropValue);
-
         const showGridlines = !(this.data?.hideGridlines ?? false);
         let startU = -(this.data?.extensionLengthStart ?? 0);
         this.data.fenceMeshSections.forEach((section) => {

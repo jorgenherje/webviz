@@ -3,7 +3,7 @@ import { Setting } from "../interfaces";
 export class SettingRegistry {
     private static _registeredSettings: Record<string, { new (params?: any): Setting<any> }> = {};
 
-    static registerSetting(ctor: { new (params?: any): Setting<any> }): void {
+    static registerSetting(ctor: { new (...params: any[]): Setting<any> }): void {
         this._registeredSettings[ctor.name] = ctor;
     }
 

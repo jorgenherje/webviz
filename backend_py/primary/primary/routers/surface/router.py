@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, Body, st
 from webviz_pkg.core_utils.perf_metrics import PerfMetrics
 
 from primary.services.sumo_access.case_inspector import CaseInspector
+from primary.services.smda_access.drogon import DrogonSmdaAccess
 from primary.services.sumo_access.surface_access import SurfaceAccess
 from primary.services.smda_access import SmdaAccess, StratigraphicUnit
 from primary.services.smda_access.stratigraphy_utils import sort_stratigraphic_names_by_hierarchy
-from primary.services.smda_access.drogon import DrogonSmdaAccess
 from primary.services.utils.statistic_function import StatisticFunction
 from primary.services.utils.surface_intersect_with_polyline import intersect_surface_with_polyline
 from primary.services.utils.authenticated_user import AuthenticatedUser
@@ -17,6 +17,7 @@ from primary.auth.auth_helper import AuthHelper
 from primary.services.surface_query_service.surface_query_service import batch_sample_surface_in_points_async
 from primary.services.surface_query_service.surface_query_service import RealizationSampleResult
 from primary.utils.response_perf_metrics import ResponsePerfMetrics
+
 from primary.utils.drogon import is_drogon_identifier
 
 from . import converters
@@ -294,42 +295,6 @@ async def get_misfit_surface_data(
     # fmt:on
 ) -> list[schemas.SurfaceDataFloat]:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
-
-
-@router.get("/wellbore_stratigraphic_columns/")
-async def get_wellbore_stratigraphic_columns(
-    authenticated_user: AuthenticatedUser = Depends(AuthHelper.get_authenticated_user),
-    wellbore_uuid: str = Query(description="Wellbore uuid"),
-) -> list[schemas.StratigraphicColumn]:
-
-    smda_access: SmdaAccess | DrogonSmdaAccess
-    if is_drogon_identifier(wellbore_uuid=wellbore_uuid):
-        # Handle DROGON
-        smda_access = DrogonSmdaAccess()
-    else:
-        smda_access = SmdaAccess(authenticated_user.get_smda_access_token())
-
-    strat_columns = await smda_access.get_stratigraphic_columns_for_wellbore_async(wellbore_uuid)
-
-    return [converters.to_api_stratigraphic_column(col) for col in strat_columns]
-
-
-@router.get("/stratigraphic_units")
-async def get_stratigraphic_units(
-    # fmt:off
-    response: Response,
-    authenticated_user: Annotated[AuthenticatedUser, Depends(AuthHelper.get_authenticated_user)],
-    case_uuid: Annotated[str, Query(description="Sumo case uuid")],
-    # fmt:on
-) -> list[schemas.StratigraphicUnit]:
-    perf_metrics = ResponsePerfMetrics(response)
-
-    strat_units = await _get_stratigraphic_units_for_case_async(authenticated_user, case_uuid)
-    api_strat_units = [converters.to_api_stratigraphic_unit(strat_unit) for strat_unit in strat_units]
-
-    LOGGER.info(f"Got stratigraphic units in: {perf_metrics.to_string()}")
-
-    return api_strat_units
 
 
 async def _get_stratigraphic_units_for_case_async(
