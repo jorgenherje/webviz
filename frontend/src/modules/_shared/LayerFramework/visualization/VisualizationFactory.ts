@@ -1,9 +1,9 @@
 import type { Layer as DeckGlLayer } from "@deck.gl/core";
-import type { Layer as EsvLayer } from "@equinor/esv-intersection";
 import type { StatusMessage } from "@framework/ModuleInstanceStatusController";
 import type { GlobalTopicDefinitions } from "@framework/WorkbenchServices";
 import * as bbox from "@lib/utils/bbox";
 import type { ColorScaleWithId } from "@modules/_shared/components/ColorLegendsContainer/colorLegendsContainer";
+import { LayerItem } from "@modules/_shared/components/EsvIntersection";
 
 import type { GroupDelegate } from "../delegates/GroupDelegate";
 import { DataLayer, DataLayerStatus } from "../framework/DataLayer/DataLayer";
@@ -38,7 +38,7 @@ export type FactoryFunctionArgs<
 
 export type TargetReturnTypes = {
     [VisualizationTarget.DECK_GL]: DeckGlLayer<any>;
-    [VisualizationTarget.ESV]: EsvLayer<any>;
+    [VisualizationTarget.ESV]: LayerItem[]; // Each layer has to be made inside EsvIntersection with the same pixiApplication, therefore the return type is LayerItem and not EsvLayer<any>
 };
 
 export type Annotation = ColorScaleWithId; // Add more possible annotation types here, e.g. ColorSets etc.

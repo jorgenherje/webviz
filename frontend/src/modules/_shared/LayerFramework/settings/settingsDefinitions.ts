@@ -1,4 +1,4 @@
-import type { SurfaceStatisticFunction_api, WellboreHeader_api } from "@api";
+import type { SurfaceStatisticFunction_api, WellboreHeader_api, WellborePick_api } from "@api";
 import type { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import type { ColorScaleSpecification } from "@framework/components/ColorScaleSelector/colorScaleSelector";
 import type { ColorSet } from "@lib/utils/ColorSet";
@@ -31,6 +31,7 @@ export enum Setting {
     GRID_LAYER_K_RANGE = "gridLayerKRange",
     GRID_NAME = "gridName",
     INTERSECTION = "intersection",
+    INTERSECTION_EXTENSION_LENGTH = "intersectionExtensionLength",
     POLYGONS_ATTRIBUTE = "polygonsAttribute",
     POLYGONS_NAME = "polygonsName",
     REALIZATION = "realization",
@@ -43,7 +44,11 @@ export enum Setting {
     SMDA_WELLBORE_PICKS = "smdaWellborePicks",
     STATISTIC_FUNCTION = "statisticFunction",
     SURFACE_NAME = "surfaceName",
+    SURFACE_NAMES = "surfaceNames",
     TIME_OR_INTERVAL = "timeOrInterval",
+    SAMPLE_RESOLUTION_IN_METERS = "sampleResolutionInMeters",
+    WELLBORE_PICKS = "wellborePicks",
+    WELLBORE_PICK_IDENTIFIER = "wellborePickIdentifier",
 }
 
 export const settingCategories = {
@@ -57,6 +62,7 @@ export const settingCategories = {
     [Setting.GRID_LAYER_K_RANGE]: SettingCategory.RANGE,
     [Setting.GRID_NAME]: SettingCategory.SINGLE_SELECT,
     [Setting.INTERSECTION]: SettingCategory.SINGLE_SELECT,
+    [Setting.INTERSECTION_EXTENSION_LENGTH]: SettingCategory.NUMBER,
     [Setting.POLYGONS_ATTRIBUTE]: SettingCategory.SINGLE_SELECT,
     [Setting.POLYGONS_NAME]: SettingCategory.SINGLE_SELECT,
     [Setting.REALIZATION]: SettingCategory.SINGLE_SELECT,
@@ -69,7 +75,11 @@ export const settingCategories = {
     [Setting.SMDA_WELLBORE_PICKS]: SettingCategory.MULTI_SELECT,
     [Setting.STATISTIC_FUNCTION]: SettingCategory.SINGLE_SELECT,
     [Setting.SURFACE_NAME]: SettingCategory.SINGLE_SELECT,
+    [Setting.SURFACE_NAMES]: SettingCategory.MULTI_SELECT,
     [Setting.TIME_OR_INTERVAL]: SettingCategory.SINGLE_SELECT,
+    [Setting.SAMPLE_RESOLUTION_IN_METERS]: SettingCategory.NUMBER,
+    [Setting.WELLBORE_PICKS]: SettingCategory.MULTI_SELECT,
+    [Setting.WELLBORE_PICK_IDENTIFIER]: SettingCategory.SINGLE_SELECT,
 } as const;
 
 export type SettingCategories = typeof settingCategories;
@@ -85,6 +95,7 @@ export type SettingTypes = {
     [Setting.GRID_LAYER_K_RANGE]: [number, number] | null;
     [Setting.GRID_NAME]: string | null;
     [Setting.INTERSECTION]: IntersectionSettingValue | null;
+    [Setting.INTERSECTION_EXTENSION_LENGTH]: number | null;
     [Setting.POLYGONS_ATTRIBUTE]: string | null;
     [Setting.POLYGONS_NAME]: string | null;
     [Setting.REALIZATION]: number | null;
@@ -97,7 +108,11 @@ export type SettingTypes = {
     [Setting.SMDA_WELLBORE_PICKS]: string[] | null;
     [Setting.STATISTIC_FUNCTION]: SurfaceStatisticFunction_api;
     [Setting.SURFACE_NAME]: string | null;
+    [Setting.SURFACE_NAMES]: string[] | null;
     [Setting.TIME_OR_INTERVAL]: string | null;
+    [Setting.SAMPLE_RESOLUTION_IN_METERS]: number | null;
+    [Setting.WELLBORE_PICKS]: WellborePick_api[] | null;
+    [Setting.WELLBORE_PICK_IDENTIFIER]: string | null;
 };
 
 export type PossibleSettingsForCategory<TCategory extends SettingCategory> = {
@@ -165,14 +180,16 @@ export const settingCategoryFixupMap: SettingCategoryFixupMap = {
         availableValues: AvailableValuesType<TSetting>,
     ) => {
         if (availableValues.length === 0) {
-            return [];
+            return null;
         }
 
+        // TODO: Ensure type of available values is correct, now the type is: (WellboreHeader_api | WellborePick_api)[] instead
+        // of (WellboreHeader_api[] | WellborePick_api[])
         if (value === null) {
-            return [availableValues[0]];
+            return [availableValues[0]] as typeof value & [];
         }
 
-        return value.filter((v) => availableValues.some((av) => isEqual(av, v)));
+        return value.filter((v) => availableValues.some((av) => isEqual(av, v))) as typeof value;
     },
     [SettingCategory.NUMBER]: <TSetting extends PossibleSettingsForCategory<SettingCategory.NUMBER>>(
         value: SettingTypes[TSetting],

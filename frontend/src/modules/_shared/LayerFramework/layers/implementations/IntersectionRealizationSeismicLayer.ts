@@ -1,64 +1,84 @@
-import { getDrilledWellboreHeadersOptions, getGridModelsInfoOptions, postGetPolylineIntersectionOptions } from "@api";
+import { getDrilledWellboreHeadersOptions, getSeismicCubeMetaListOptions, postGetSeismicFenceOptions } from "@api";
 import { IntersectionType } from "@framework/types/intersection";
 import { PolylineWithSectionLengths } from "@modules/_shared/Intersection/intersectionPolylineTypes";
 import {
     PolylineIntersectionSpecification,
     WellboreIntersectionSpecification,
+    createResampledPolylineXyUtm,
     makeIntersectionPolylineWithSectionLengthsPromise,
 } from "@modules/_shared/Intersection/intersectionPolylineUtils";
-import type { IntersectionSettingValue } from "@modules/_shared/LayerFramework/settings/implementations/IntersectionSetting";
-import type { MakeSettingTypesMap } from "@modules/_shared/LayerFramework/settings/settingsDefinitions";
-import { Setting } from "@modules/_shared/LayerFramework/settings/settingsDefinitions";
-import type { PolylineIntersection_trans } from "@modules/_shared/utils/wellbore";
-import { transformPolylineIntersection } from "@modules/_shared/utils/wellbore";
+import {
+    SeismicFenceData_trans,
+    transformSeismicFenceData,
+} from "@modules/_shared/Intersection/seismicIntersectionTransform";
+import { createSeismicFencePolylineFromPolylineXy } from "@modules/_shared/Intersection/seismicIntersectionUtils";
 
 import { isEqual } from "lodash";
 
-import type {
+import {
     CustomDataLayerImplementation,
     DataLayerInformationAccessors,
     FetchDataParams,
 } from "../../interfacesAndTypes/customDataLayerImplementation";
-import type { DefineDependenciesArgs } from "../../interfacesAndTypes/customSettingsHandler";
+import { DefineDependenciesArgs } from "../../interfacesAndTypes/customSettingsHandler";
+import { IntersectionSettingValue } from "../../settings/implementations/IntersectionSetting";
+import { MakeSettingTypesMap, Setting } from "../../settings/settingsDefinitions";
 
-const intersectionRealizationGridSettings = [
+const intersectionRealizationSeismicSettings = [
     Setting.INTERSECTION,
     Setting.INTERSECTION_EXTENSION_LENGTH,
     Setting.ENSEMBLE,
     Setting.REALIZATION,
     Setting.ATTRIBUTE,
-    Setting.GRID_NAME,
     Setting.TIME_OR_INTERVAL,
-    Setting.SHOW_GRID_LINES,
+    Setting.SAMPLE_RESOLUTION_IN_METERS,
     Setting.COLOR_SCALE,
 ] as const;
-export type IntersectionRealizationGridSettings = typeof intersectionRealizationGridSettings;
-type SettingsWithTypes = MakeSettingTypesMap<IntersectionRealizationGridSettings>;
+export type IntersectionRealizationSeismicSettings = typeof intersectionRealizationSeismicSettings;
+type SettingsWithTypes = MakeSettingTypesMap<IntersectionRealizationSeismicSettings>;
 
-export type IntersectionRealizationGridStoredData = {
-    polylineWithSectionLengths: PolylineWithSectionLengths;
+export type IntersectionRealizationSeismicStoredData = {
+    sourcePolylineWithSectionLengths: PolylineWithSectionLengths;
+    seismicFencePolylineUtmXy: number[];
 };
 
-export type IntersectionRealizationGridData = PolylineIntersection_trans;
+export enum SeismicDataSource {
+    OBSERVED = "observed",
+    SIMULATED = "simulated",
+}
 
-export class IntersectionRealizationGridLayer
+const SeismicDataSourceEnumToStringMapping = {
+    [SeismicDataSource.OBSERVED]: "Observed",
+    [SeismicDataSource.SIMULATED]: "Simulated",
+};
+
+export type IntersectionRealizationSeismicData = SeismicFenceData_trans;
+
+export class IntersectionRealizationSeismicLayer
     implements
         CustomDataLayerImplementation<
-            IntersectionRealizationGridSettings,
-            IntersectionRealizationGridData,
-            IntersectionRealizationGridStoredData
+            IntersectionRealizationSeismicSettings,
+            IntersectionRealizationSeismicData,
+            IntersectionRealizationSeismicStoredData
         >
 {
-    settings = intersectionRealizationGridSettings;
+    settings = intersectionRealizationSeismicSettings;
+
+    private _dataSource: SeismicDataSource;
+
+    constructor(dataSource: SeismicDataSource) {
+        this._dataSource = dataSource;
+    }
 
     getDefaultSettingsValues() {
         return {
-            [Setting.SHOW_GRID_LINES]: false,
+            [Setting.SAMPLE_RESOLUTION_IN_METERS]: 1,
         };
     }
 
     getDefaultName(): string {
-        return "Intersection Realization Grid";
+        const dataSourceString = SeismicDataSourceEnumToStringMapping[this._dataSource];
+        return `Intersection Realization ${dataSourceString} Seismic Layer`;
     }
 
     doSettingsChangesRequireDataRefetch(prevSettings: SettingsWithTypes, newSettings: SettingsWithTypes): boolean {
@@ -68,17 +88,23 @@ export class IntersectionRealizationGridLayer
     makeValueRange({
         getData,
     }: DataLayerInformationAccessors<
-        IntersectionRealizationGridSettings,
-        IntersectionRealizationGridData,
-        IntersectionRealizationGridStoredData
+        IntersectionRealizationSeismicSettings,
+        IntersectionRealizationSeismicData,
+        IntersectionRealizationSeismicStoredData
     >): [number, number] | null {
         const data = getData();
         if (!data) {
             return null;
         }
 
+        // TODO: Implement value range calculation
+        return null;
+
+        // TODO: Find min and max values in data
+        // Should it be a part of data from back-end, for easier access?
         if (data) {
-            return [data.min_grid_prop_value, data.max_grid_prop_value];
+            // return [data.min_grid_prop_value, data.max_grid_prop_value];
+            return [0, 1];
         }
 
         return null;
@@ -87,9 +113,9 @@ export class IntersectionRealizationGridLayer
     areCurrentSettingsValid({
         getSetting,
     }: DataLayerInformationAccessors<
-        IntersectionRealizationGridSettings,
-        IntersectionRealizationGridData,
-        IntersectionRealizationGridStoredData
+        IntersectionRealizationSeismicSettings,
+        IntersectionRealizationSeismicData,
+        IntersectionRealizationSeismicStoredData
     >): boolean {
         // Extension has to be set if intersection is wellbore
         const isValidIntersectionExtensionLength =
@@ -101,10 +127,9 @@ export class IntersectionRealizationGridLayer
             isValidIntersectionExtensionLength &&
             getSetting(Setting.ENSEMBLE) !== null &&
             getSetting(Setting.REALIZATION) !== null &&
-            getSetting(Setting.GRID_NAME) !== null &&
             getSetting(Setting.ATTRIBUTE) !== null &&
             getSetting(Setting.TIME_OR_INTERVAL) !== null &&
-            getSetting(Setting.SHOW_GRID_LINES) !== null
+            getSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) !== null
         );
     }
 
@@ -114,7 +139,7 @@ export class IntersectionRealizationGridLayer
         queryClient,
         workbenchSession,
         storedDataUpdater,
-    }: DefineDependenciesArgs<IntersectionRealizationGridSettings, IntersectionRealizationGridStoredData>): void {
+    }: DefineDependenciesArgs<IntersectionRealizationSeismicSettings, IntersectionRealizationSeismicStoredData>): void {
         availableSettingsUpdater(Setting.ENSEMBLE, ({ getGlobalSetting }) => {
             const fieldIdentifier = getGlobalSetting("fieldId");
             const ensembles = getGlobalSetting("ensembles");
@@ -139,54 +164,43 @@ export class IntersectionRealizationGridLayer
             return [...realizations];
         });
 
-        const realizationGridDataDep = helperDependency(async ({ getLocalSetting, abortSignal }) => {
+        const ensembleSeismicCubeMetaListDep = helperDependency(async ({ getLocalSetting, abortSignal }) => {
             const ensembleIdent = getLocalSetting(Setting.ENSEMBLE);
-            const realization = getLocalSetting(Setting.REALIZATION);
 
-            if (!ensembleIdent || realization === null) {
+            if (!ensembleIdent) {
                 return null;
             }
 
             return await queryClient.fetchQuery({
-                ...getGridModelsInfoOptions({
+                ...getSeismicCubeMetaListOptions({
                     query: {
-                        case_uuid: ensembleIdent.getCaseUuid(),
-                        ensemble_name: ensembleIdent.getEnsembleName(),
-                        realization_num: realization,
+                        case_uuid: ensembleIdent?.getCaseUuid() ?? "",
+                        ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
                     },
+
                     signal: abortSignal,
                 }),
             });
         });
 
-        availableSettingsUpdater(Setting.GRID_NAME, ({ getHelperDependency }) => {
-            const data = getHelperDependency(realizationGridDataDep);
+        availableSettingsUpdater(Setting.ATTRIBUTE, ({ getHelperDependency }) => {
+            const seismicCubeMetaList = getHelperDependency(ensembleSeismicCubeMetaListDep);
 
-            if (!data) {
+            if (!seismicCubeMetaList) {
                 return [];
             }
 
-            const availableGridNames = [...Array.from(new Set(data.map((gridModelInfo) => gridModelInfo.grid_name)))];
+            // Get seismic attributes that are depth of correct data source
+            const doRequestObservation = this._dataSource === SeismicDataSource.OBSERVED;
+            const availableAttributes = Array.from(
+                new Set(
+                    seismicCubeMetaList
+                        .filter((el) => el.isDepth && el.isObservation === doRequestObservation)
+                        .map((el) => el.seismicAttribute)
+                )
+            );
 
-            return availableGridNames;
-        });
-
-        availableSettingsUpdater(Setting.ATTRIBUTE, ({ getLocalSetting, getHelperDependency }) => {
-            const gridName = getLocalSetting(Setting.GRID_NAME);
-            const data = getHelperDependency(realizationGridDataDep);
-
-            if (!gridName || !data) {
-                return [];
-            }
-
-            const gridAttributeArr =
-                data.find((gridModel) => gridModel.grid_name === gridName)?.property_info_arr ?? [];
-
-            const availableGridAttributes = [
-                ...Array.from(new Set(gridAttributeArr.map((gridAttribute) => gridAttribute.property_name))),
-            ];
-
-            return availableGridAttributes;
+            return availableAttributes;
         });
 
         const wellboreHeadersDep = helperDependency(async function fetchData({ getLocalSetting, abortSignal }) {
@@ -218,6 +232,7 @@ export class IntersectionRealizationGridLayer
             const intersectionPolylines = getGlobalSetting("intersectionPolylines");
 
             const intersectionOptions: IntersectionSettingValue[] = [];
+
             if (wellboreHeaders) {
                 for (const wellboreHeader of wellboreHeaders) {
                     intersectionOptions.push({
@@ -246,28 +261,30 @@ export class IntersectionRealizationGridLayer
         });
 
         availableSettingsUpdater(Setting.TIME_OR_INTERVAL, ({ getLocalSetting, getHelperDependency }) => {
-            const gridName = getLocalSetting(Setting.GRID_NAME);
-            const gridAttribute = getLocalSetting(Setting.ATTRIBUTE);
-            const data = getHelperDependency(realizationGridDataDep);
+            const seismicCubeMetaList = getHelperDependency(ensembleSeismicCubeMetaListDep);
+            const seismicAttribute = getLocalSetting(Setting.ATTRIBUTE);
 
-            if (!gridName || !gridAttribute || !data) {
+            if (!seismicAttribute || !seismicCubeMetaList) {
                 return [];
             }
-
-            const gridAttributeArr =
-                data.find((gridModel) => gridModel.grid_name === gridName)?.property_info_arr ?? [];
 
             const availableTimeOrIntervals = [
                 ...Array.from(
                     new Set(
-                        gridAttributeArr
-                            .filter((attr) => attr.property_name === gridAttribute)
-                            .map((gridAttribute) => gridAttribute.iso_date_or_interval ?? "NO_TIME")
+                        seismicCubeMetaList
+                            .filter((surface) => surface.seismicAttribute === seismicAttribute)
+                            .map((el) => el.isoDateOrInterval)
                     )
                 ),
             ];
 
             return availableTimeOrIntervals;
+        });
+
+        availableSettingsUpdater(Setting.SAMPLE_RESOLUTION_IN_METERS, () => {
+            const minSampleResolution = 1;
+            const maxSampleResolution = 100;
+            return [minSampleResolution, maxSampleResolution];
         });
 
         // Create intersection polyline and actual section lengths data asynchronously
@@ -322,7 +339,7 @@ export class IntersectionRealizationGridLayer
             }
         );
 
-        storedDataUpdater("polylineWithSectionLengths", ({ getHelperDependency }) => {
+        storedDataUpdater("sourcePolylineWithSectionLengths", ({ getHelperDependency }) => {
             const intersectionPolylineWithSectionLengths = getHelperDependency(
                 intersectionPolylineWithSectionLengthsDep
             );
@@ -340,6 +357,29 @@ export class IntersectionRealizationGridLayer
 
             return intersectionPolylineWithSectionLengths;
         });
+
+        // TODO: Remove from storedData and use sourcePolylineWithSectionLengths in fetchData, and create resampled polyline there?
+        storedDataUpdater("seismicFencePolylineUtmXy", ({ getHelperDependency, getLocalSetting }) => {
+            const intersectionPolylineWithSectionLengths = getHelperDependency(
+                intersectionPolylineWithSectionLengthsDep
+            );
+            const sampleResolutionInMeters = getLocalSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) ?? 1;
+
+            // If no intersection is selected, or polyline is empty, return an empty polyline
+            if (
+                !intersectionPolylineWithSectionLengths ||
+                intersectionPolylineWithSectionLengths.polylineUtmXy.length === 0
+            ) {
+                return [];
+            }
+
+            // Resample the polyline, as seismic fence is created by one trace per (x,y) point in the polyline
+            const resampledPolylineXyUtm = createResampledPolylineXyUtm(
+                intersectionPolylineWithSectionLengths.polylineUtmXy,
+                sampleResolutionInMeters
+            );
+            return resampledPolylineXyUtm;
+        });
     }
 
     fetchData({
@@ -348,55 +388,52 @@ export class IntersectionRealizationGridLayer
         registerQueryKey,
         queryClient,
     }: FetchDataParams<
-        IntersectionRealizationGridSettings,
-        IntersectionRealizationGridData,
-        IntersectionRealizationGridStoredData
-    >): Promise<IntersectionRealizationGridData> {
+        IntersectionRealizationSeismicSettings,
+        IntersectionRealizationSeismicData,
+        IntersectionRealizationSeismicStoredData
+    >): Promise<IntersectionRealizationSeismicData> {
         const ensembleIdent = getSetting(Setting.ENSEMBLE);
-        const realizationNum = getSetting(Setting.REALIZATION);
-        const gridName = getSetting(Setting.GRID_NAME);
-        const parameterName = getSetting(Setting.ATTRIBUTE);
-        let timeOrInterval = getSetting(Setting.TIME_OR_INTERVAL);
-        if (timeOrInterval === "NO_TIME") {
-            timeOrInterval = null;
-        }
+        const realization = getSetting(Setting.REALIZATION);
+        const attribute = getSetting(Setting.ATTRIBUTE);
+        const timeOrInterval = getSetting(Setting.TIME_OR_INTERVAL);
+        const seismicFencePolylineUtmXy = getStoredData("seismicFencePolylineUtmXy");
 
-        const polylineWithSectionLengths = getStoredData("polylineWithSectionLengths");
-        if (!polylineWithSectionLengths) {
-            throw new Error("No polyline and actual section lengths found in stored data");
+        if (!seismicFencePolylineUtmXy) {
+            throw new Error("No seismic fence polyline found in stored data");
         }
-        if (polylineWithSectionLengths.polylineUtmXy.length < 4) {
-            throw new Error("Invalid polyline in stored data. Must contain at least two (x,y)-points");
+        if (seismicFencePolylineUtmXy.length === 0) {
+            throw new Error("Invalid seismic fence polyline in stored data. Must contain at least two (x,y)-points");
         }
 
         const queryKey = [
-            "gridIntersection",
+            "seismicIntersection",
             ensembleIdent,
-            gridName,
-            parameterName,
+            realization,
+            attribute,
             timeOrInterval,
-            realizationNum,
-            polylineWithSectionLengths.polylineUtmXy,
-            polylineWithSectionLengths.actualSectionLengths,
+            seismicFencePolylineUtmXy,
         ];
         registerQueryKey(queryKey);
 
-        const gridIntersectionPromise = queryClient
+        const apiSeismicFencePolyline = createSeismicFencePolylineFromPolylineXy(seismicFencePolylineUtmXy);
+        const seismicFenceDataPromise = queryClient
             .fetchQuery({
-                ...postGetPolylineIntersectionOptions({
+                ...postGetSeismicFenceOptions({
                     query: {
                         case_uuid: ensembleIdent?.getCaseUuid() ?? "",
                         ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
-                        grid_name: gridName ?? "",
-                        parameter_name: parameterName ?? "",
-                        parameter_time_or_interval_str: timeOrInterval,
-                        realization_num: realizationNum ?? 0,
+                        realization_num: realization ?? 0,
+                        seismic_attribute: attribute ?? "",
+                        time_or_interval_str: timeOrInterval ?? "",
+                        observed: this._dataSource === SeismicDataSource.OBSERVED,
                     },
-                    body: { polyline_utm_xy: polylineWithSectionLengths.polylineUtmXy },
+                    body: {
+                        polyline: apiSeismicFencePolyline,
+                    },
                 }),
             })
-            .then(transformPolylineIntersection);
+            .then(transformSeismicFenceData);
 
-        return gridIntersectionPromise;
+        return seismicFenceDataPromise;
     }
 }
