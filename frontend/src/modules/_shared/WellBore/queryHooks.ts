@@ -4,7 +4,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
 export function useDrilledWellboreHeadersQuery(
-    fieldIdentifier: string | undefined,
+    fieldIdentifier: string | undefined
 ): UseQueryResult<WellboreHeader_api[]> {
     return useQuery({
         ...getDrilledWellboreHeadersOptions({
@@ -17,7 +17,7 @@ export function useDrilledWellboreHeadersQuery(
 }
 
 export function useFieldWellboreTrajectoriesQuery(
-    fieldIdentifier: string | undefined,
+    fieldIdentifier: string | undefined
 ): UseQueryResult<WellboreTrajectory_api[]> {
     return useQuery({
         ...getWellTrajectoriesOptions({
