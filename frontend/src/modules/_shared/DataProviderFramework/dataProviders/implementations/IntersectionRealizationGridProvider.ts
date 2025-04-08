@@ -5,14 +5,13 @@ import {
     postGetPolylineIntersectionOptions,
 } from "@api";
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
+import { IntersectionType } from "@framework/types/intersection";
 import type { IntersectionSettingValue } from "@modules/_shared/DataProviderFramework/settings/implementations/IntersectionSetting";
 import type { MakeSettingTypesMap } from "@modules/_shared/DataProviderFramework/settings/settingsDefinitions";
 import { Setting } from "@modules/_shared/DataProviderFramework/settings/settingsDefinitions";
-import type { PolylineIntersection_trans } from "@modules/_shared/utils/wellbore";
-import {
-    calcExtendedSimplifiedWellboreTrajectoryInXYPlane,
-    transformPolylineIntersection,
-} from "@modules/_shared/utils/wellbore";
+import type { PolylineIntersection_trans } from "@modules/_shared/Intersection/gridIntersectionTransform";
+import { transformPolylineIntersection } from "@modules/_shared/Intersection/gridIntersectionTransform";
+import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 
 import { isEqual } from "lodash";
 
@@ -216,7 +215,7 @@ export class IntersectionRealizationGridProvider
             const intersectionOptions: IntersectionSettingValue[] = [];
             for (const wellboreHeader of wellboreHeaders) {
                 intersectionOptions.push({
-                    type: "wellbore",
+                    type: IntersectionType.WELLBORE,
                     name: wellboreHeader.uniqueWellboreIdentifier,
                     uuid: wellboreHeader.wellboreUuid,
                 });
@@ -224,7 +223,7 @@ export class IntersectionRealizationGridProvider
 
             for (const polyline of intersectionPolylines) {
                 intersectionOptions.push({
-                    type: "polyline",
+                    type: IntersectionType.CUSTOM_POLYLINE,
                     name: polyline.name,
                     uuid: polyline.id,
                 });
