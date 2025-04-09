@@ -109,7 +109,7 @@ export function DataProviderManagerWrapper(props: DataProviderManagerWrapperProp
             case "realization-grid":
                 groupDelegate.prependChild(
                     DataProviderRegistry.makeDataProvider(
-                        DataProviderType.INTERSECTION_REALIZATION_GRID,
+                        DataProviderType.INTERSECTION_WITH_EXTENSION_REALIZATION_GRID,
                         props.dataProviderManager,
                     ),
                 );

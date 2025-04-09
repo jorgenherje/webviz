@@ -14,7 +14,7 @@ import type {
  * The intersection uz-coordinates are provided as the xy-coordinates of the bounding box,
  * as they are to be visualized in a 2D view.
  */
-export function makeIntersectionSurfacesBoundingBox({
+export function makeSurfacesBoundingBox({
     getData,
     getSetting,
     getStoredData,

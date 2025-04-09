@@ -3,7 +3,7 @@ import type {
     IntersectionRealizationGridData,
     IntersectionRealizationGridSettings,
     IntersectionRealizationGridStoredData,
-} from "@modules/_shared/DataProviderFramework/dataProviders/implementations/IntersectionWithExtensionRealizationGridProvider";
+} from "@modules/_shared/DataProviderFramework/dataProviders/implementations/IntersectionRealizationGridProvider";
 import { Setting } from "@modules/_shared/DataProviderFramework/settings/settingsDefinitions";
 import type { TransformerArgs } from "@modules/_shared/DataProviderFramework/visualization/VisualizationAssembler";
 import { createTransformedPolylineIntersectionResult } from "@modules/_shared/Intersection/gridIntersectionTransform";
@@ -14,7 +14,7 @@ import { createTransformedPolylineIntersectionResult } from "@modules/_shared/In
  * The intersection uz-coordinates are provided as the xy-coordinates of the bounding box,
  * as they are to be visualized in a 2D view.
  */
-export function makeIntersectionGridBoundingBox({
+export function makeGridBoundingBox({
     getData,
     getStoredData,
     getSetting,

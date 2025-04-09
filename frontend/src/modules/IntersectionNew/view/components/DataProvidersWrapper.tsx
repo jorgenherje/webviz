@@ -11,23 +11,23 @@ import type { Viewport } from "@framework/types/viewport";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { useElementSize } from "@lib/hooks/useElementSize";
 import { makeColorScaleAnnotation } from "@modules/IntersectionNew/DataProviderFramework/annotations/makeColorScaleAnnotation";
-import { makeIntersectionGridBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeIntersectionGridBoundingBox";
-import { makeIntersectionSeismicBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeIntersectionSeismicBoundingBox";
-import { makeIntersectionSurfacesBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeIntersectionSurfacesBoundingBox";
+import { makeGridBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeGridBoundingBox";
+import { makeSeismicBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeSeismicBoundingBox";
+import { makeSurfacesBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeSurfacesBoundingBox";
 import { EnsembleWellborePicksProvider } from "@modules/IntersectionNew/DataProviderFramework/customDataProviderImplementations/EnsembleWellborePicksProvider";
 import { IntersectionSurfacesProvider } from "@modules/IntersectionNew/DataProviderFramework/customDataProviderImplementations/IntersectionSurfacesProvider";
 import { CustomDataProviderType } from "@modules/IntersectionNew/DataProviderFramework/customDataProviderImplementations/dataProviderTypes";
 import type { IntersectionInjectedData } from "@modules/IntersectionNew/DataProviderFramework/injectedDataType";
+import { createGridLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/createGridLayerItemsMaker";
+import { createSeismicLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/createSeismicLayerItemsMaker";
+import { createSurfacesLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/createSurfacesLayerItemsMaker";
+import { createWellborePicksLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/createWellborePicksLayerItemsMaker";
 import { makeEsvViewDataCollection } from "@modules/IntersectionNew/DataProviderFramework/visualization/makeEsvViewDataCollection";
-import { createIntersectionRealizationGridLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/makeIntersectionGridLayer";
-import { createIntersectionRealizationSeismicLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/makeIntersectionSeismicLayer";
-import { createIntersectionSurfacesLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/makeIntersectionSurfacesLayer";
-import { createWellborePicksLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/makeIntersectionWellborePicksLayer";
 import type { Interfaces } from "@modules/IntersectionNew/interfaces";
 import type { PreferredViewLayout } from "@modules/IntersectionNew/typesAndEnums";
 import { DataProviderType } from "@modules/_shared/DataProviderFramework/dataProviders/dataProviderTypes";
+import { IntersectionRealizationGridProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/IntersectionRealizationGridProvider";
 import { IntersectionRealizationSeismicProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/IntersectionRealizationSeismicProvider";
-import { IntersectionWithExtensionRealizationGridProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/IntersectionWithExtensionRealizationGridProvider";
 import {
     type DataProviderManager,
     DataProviderManagerTopic,
@@ -90,11 +90,11 @@ VISUALIZATION_ASSEMBLER.registerGroupCustomPropsCollector(
 );
 
 VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
-    DataProviderType.INTERSECTION_REALIZATION_GRID,
-    IntersectionWithExtensionRealizationGridProvider,
+    DataProviderType.INTERSECTION_WITH_EXTENSION_REALIZATION_GRID,
+    IntersectionRealizationGridProvider,
     {
-        transformToVisualization: createIntersectionRealizationGridLayerItemsMaker,
-        transformToBoundingBox: makeIntersectionGridBoundingBox,
+        transformToVisualization: createGridLayerItemsMaker,
+        transformToBoundingBox: makeGridBoundingBox,
         transformToAnnotations: makeColorScaleAnnotation,
     },
 );
@@ -103,8 +103,8 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
     DataProviderType.INTERSECTION_REALIZATION_SIMULATED_SEISMIC,
     IntersectionRealizationSeismicProvider,
     {
-        transformToVisualization: createIntersectionRealizationSeismicLayerItemsMaker,
-        transformToBoundingBox: makeIntersectionSeismicBoundingBox,
+        transformToVisualization: createSeismicLayerItemsMaker,
+        transformToBoundingBox: makeSeismicBoundingBox,
         transformToAnnotations: makeColorScaleAnnotation,
     },
 );
@@ -113,8 +113,8 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
     DataProviderType.INTERSECTION_REALIZATION_OBSERVED_SEISMIC,
     IntersectionRealizationSeismicProvider,
     {
-        transformToVisualization: createIntersectionRealizationSeismicLayerItemsMaker,
-        transformToBoundingBox: makeIntersectionSeismicBoundingBox,
+        transformToVisualization: createSeismicLayerItemsMaker,
+        transformToBoundingBox: makeSeismicBoundingBox,
         transformToAnnotations: makeColorScaleAnnotation,
     },
 );
@@ -131,8 +131,8 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
     CustomDataProviderType.INTERSECTION_REALIZATION_SURFACES,
     IntersectionSurfacesProvider,
     {
-        transformToVisualization: createIntersectionSurfacesLayerItemsMaker,
-        transformToBoundingBox: makeIntersectionSurfacesBoundingBox,
+        transformToVisualization: createSurfacesLayerItemsMaker,
+        transformToBoundingBox: makeSurfacesBoundingBox,
     },
 );
 
@@ -164,6 +164,10 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
         // throw new Error("Multiple views are not supported");
         statusWriter.addWarning("Multiple views are not supported");
     }
+
+    assemblerProduct.aggregatedErrorMessages.forEach((error) => {
+        statusWriter.addError(error);
+    });
 
     // View of interest when supporting only one view
     const viewCandidate = assemblerProduct.children.find((child) => child.itemType === VisualizationItemType.GROUP);

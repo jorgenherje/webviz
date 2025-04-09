@@ -48,11 +48,12 @@ function makeTrajectoryFenceProjectionFromPolylineXy(
     return trajectoryFenceProjection;
 }
 
-export function createIntersectionRealizationSeismicLayerItemsMaker({
+export function createSeismicLayerItemsMaker({
     id,
     getData,
     getSetting,
     getStoredData,
+    isLoading,
     name,
 }: TransformerArgs<
     IntersectionRealizationSeismicSettings,
@@ -89,6 +90,12 @@ export function createIntersectionRealizationSeismicLayerItemsMaker({
     const intersectionSeismicLayerItemsMaker: EsvLayerItemsMaker = {
         makeLayerItems: (intersectionReferenceSystem: IntersectionReferenceSystem | null) => {
             void intersectionReferenceSystem; // Not used for this layer
+
+            if (isLoading) {
+                // TODO: Add gray layer when loading
+                return [];
+            }
+
             return [
                 {
                     id,

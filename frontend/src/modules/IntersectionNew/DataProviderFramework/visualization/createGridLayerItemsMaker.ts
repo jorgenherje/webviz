@@ -3,7 +3,7 @@ import type {
     IntersectionRealizationGridData,
     IntersectionRealizationGridSettings,
     IntersectionRealizationGridStoredData,
-} from "@modules/_shared/DataProviderFramework/dataProviders/implementations/IntersectionWithExtensionRealizationGridProvider";
+} from "@modules/_shared/DataProviderFramework/dataProviders/implementations/IntersectionRealizationGridProvider";
 import { Setting } from "@modules/_shared/DataProviderFramework/settings/settingsDefinitions";
 import type {
     EsvLayerItemsMaker,
@@ -12,7 +12,7 @@ import type {
 import { createTransformedPolylineIntersectionResult } from "@modules/_shared/Intersection/gridIntersectionTransform";
 import { LayerType } from "@modules/_shared/components/EsvIntersection";
 
-export function createIntersectionRealizationGridLayerItemsMaker({
+export function createGridLayerItemsMaker({
     id,
     getData,
     getSetting,

@@ -11,7 +11,7 @@ import type {
     IntersectionSurfacesSettings,
 } from "../customDataProviderImplementations/IntersectionSurfacesProvider";
 
-export function createIntersectionSurfacesLayerItemsMaker({
+export function createSurfacesLayerItemsMaker({
     id,
     name,
     getData,
