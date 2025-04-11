@@ -51,7 +51,7 @@ export function createGridLayerItemsMaker({
             void intersectionReferenceSystem; // Not used for this layer
             return [
                 {
-                    id,
+                    id: `${id}-grid-layer`,
                     name: name,
                     type: LayerType.POLYLINE_INTERSECTION,
                     options: {

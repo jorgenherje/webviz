@@ -1,13 +1,11 @@
-import type { SurfaceIntersectionData_api } from "@api";
+import type { SurfaceRealizationSampleValues_api } from "@api";
 import {
     SurfaceAttributeType_api,
     getDrilledWellboreHeadersOptions,
     getRealizationSurfacesMetadataOptions,
-    postGetSurfaceIntersectionOptions,
+    postGetSampleSurfaceInPointsOptions,
 } from "@api";
 import { IntersectionType } from "@framework/types/intersection";
-import type { Vec2 } from "@lib/utils/vec2";
-import { normalizeVec2, point2Distance } from "@lib/utils/vec2";
 import type {
     CustomDataProviderImplementation,
     DataProviderInformationAccessors,
@@ -26,37 +24,44 @@ import { makeIntersectionPolylineWithSectionLengthsPromise } from "@modules/_sha
 
 import { isEqual } from "lodash";
 
-const intersectionSurfacesSettings = [
+import { createResampledPolylinePointsAndCumulatedLengthArray } from "./utils";
+
+const perRealizationSurfacesSettings = [
     Setting.INTERSECTION,
     Setting.INTERSECTION_EXTENSION_LENGTH,
     Setting.ENSEMBLE,
-    Setting.REALIZATION,
+    Setting.REALIZATIONS,
     Setting.ATTRIBUTE,
     Setting.SURFACE_NAMES,
     Setting.SAMPLE_RESOLUTION_IN_METERS,
     Setting.COLOR_SET,
 ] as const;
-export type IntersectionSurfacesSettings = typeof intersectionSurfacesSettings;
-type SettingsWithTypes = MakeSettingTypesMap<IntersectionSurfacesSettings>;
+export type PerRealizationSurfacesSettings = typeof perRealizationSurfacesSettings;
+type SettingsWithTypes = MakeSettingTypesMap<PerRealizationSurfacesSettings>;
 
-export type IntersectionSurfacesStoredData = {
-    polylineWithSectionLengths: PolylineWithSectionLengths;
+export type PerRealizationSurfacesStoredData = {
+    requestedPolylineWithCumulatedLengths: {
+        xUtmPoints: number[];
+        yUtmPoints: number[];
+        cumulatedHorizontalPolylineLengthArr: number[];
+    };
 };
 
-export type IntersectionSurfacesData = SurfaceIntersectionData_api[];
+// Key is surface name, value is surface realization sample values for respective surface
+export type PerRealizationSurfacesData = Record<string, SurfaceRealizationSampleValues_api[]>;
 
-export class IntersectionSurfacesProvider
+export class PerRealizationSurfacesProvider
     implements
         CustomDataProviderImplementation<
-            IntersectionSurfacesSettings,
-            IntersectionSurfacesData,
-            IntersectionSurfacesStoredData
+            PerRealizationSurfacesSettings,
+            PerRealizationSurfacesData,
+            PerRealizationSurfacesStoredData
         >
 {
-    settings = intersectionSurfacesSettings;
+    settings = perRealizationSurfacesSettings;
 
     getDefaultName() {
-        return "Intersection Surfaces";
+        return "Per Realization Surfaces";
     }
 
     doSettingsChangesRequireDataRefetch(prevSettings: SettingsWithTypes, newSettings: SettingsWithTypes): boolean {
@@ -66,9 +71,9 @@ export class IntersectionSurfacesProvider
     areCurrentSettingsValid({
         getSetting,
     }: DataProviderInformationAccessors<
-        IntersectionSurfacesSettings,
-        IntersectionSurfacesData,
-        IntersectionSurfacesStoredData
+        PerRealizationSurfacesSettings,
+        PerRealizationSurfacesData,
+        PerRealizationSurfacesStoredData
     >): boolean {
         // Extension has to be set if intersection is wellbore
         const isValidIntersectionExtensionLength =
@@ -79,7 +84,7 @@ export class IntersectionSurfacesProvider
             getSetting(Setting.INTERSECTION) !== null &&
             isValidIntersectionExtensionLength &&
             getSetting(Setting.ENSEMBLE) !== null &&
-            getSetting(Setting.REALIZATION) !== null &&
+            getSetting(Setting.REALIZATIONS) !== null &&
             getSetting(Setting.ATTRIBUTE) !== null &&
             getSetting(Setting.SURFACE_NAMES) !== null &&
             getSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) !== null
@@ -92,7 +97,7 @@ export class IntersectionSurfacesProvider
         queryClient,
         workbenchSession,
         storedDataUpdater,
-    }: DefineDependenciesArgs<IntersectionSurfacesSettings, IntersectionSurfacesStoredData>): void {
+    }: DefineDependenciesArgs<PerRealizationSurfacesSettings, PerRealizationSurfacesStoredData>): void {
         availableSettingsUpdater(Setting.ENSEMBLE, ({ getGlobalSetting }) => {
             const fieldIdentifier = getGlobalSetting("fieldId");
             const ensembles = getGlobalSetting("ensembles");
@@ -104,7 +109,7 @@ export class IntersectionSurfacesProvider
             return ensembleIdentsForField;
         });
 
-        availableSettingsUpdater(Setting.REALIZATION, ({ getLocalSetting, getGlobalSetting }) => {
+        availableSettingsUpdater(Setting.REALIZATIONS, ({ getLocalSetting, getGlobalSetting }) => {
             const ensembleIdent = getLocalSetting(Setting.ENSEMBLE);
             const realizationFilterFunc = getGlobalSetting("realizationFilterFunction");
 
@@ -274,10 +279,12 @@ export class IntersectionSurfacesProvider
             },
         );
 
-        storedDataUpdater("polylineWithSectionLengths", ({ getHelperDependency }) => {
+        storedDataUpdater("requestedPolylineWithCumulatedLengths", ({ getHelperDependency, getLocalSetting }) => {
             const intersectionPolylineWithSectionLengths = getHelperDependency(
                 intersectionPolylineWithSectionLengthsDep,
             );
+            const intersectionExtensionLength = getLocalSetting(Setting.INTERSECTION_EXTENSION_LENGTH) ?? 0;
+            const sampleResolutionInMeters = getLocalSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) ?? 1;
 
             // If no intersection is selected, or polyline is empty, return an empty polyline
             if (
@@ -285,12 +292,26 @@ export class IntersectionSurfacesProvider
                 intersectionPolylineWithSectionLengths.polylineUtmXy.length === 0
             ) {
                 return {
-                    polylineUtmXy: [],
-                    actualSectionLengths: [],
+                    xUtmPoints: [],
+                    yUtmPoints: [],
+                    cumulatedHorizontalPolylineLengthArr: [],
                 };
             }
 
-            return intersectionPolylineWithSectionLengths;
+            const initialHorizontalPosition = -intersectionExtensionLength;
+            const resampledPolylineWithCumulatedLengths = createResampledPolylinePointsAndCumulatedLengthArray(
+                intersectionPolylineWithSectionLengths.polylineUtmXy,
+                intersectionPolylineWithSectionLengths.actualSectionLengths,
+                initialHorizontalPosition,
+                sampleResolutionInMeters,
+            );
+
+            return {
+                xUtmPoints: resampledPolylineWithCumulatedLengths.xPoints,
+                yUtmPoints: resampledPolylineWithCumulatedLengths.yPoints,
+                cumulatedHorizontalPolylineLengthArr:
+                    resampledPolylineWithCumulatedLengths.cumulatedHorizontalPolylineLengthArr,
+            };
         });
     }
 
@@ -300,128 +321,66 @@ export class IntersectionSurfacesProvider
         registerQueryKey,
         queryClient,
     }: FetchDataParams<
-        IntersectionSurfacesSettings,
-        IntersectionSurfacesData,
-        IntersectionSurfacesStoredData
-    >): Promise<IntersectionSurfacesData> {
+        PerRealizationSurfacesSettings,
+        PerRealizationSurfacesData,
+        PerRealizationSurfacesStoredData
+    >): Promise<PerRealizationSurfacesData> {
         const ensembleIdent = getSetting(Setting.ENSEMBLE);
-        const realization = getSetting(Setting.REALIZATION);
+        const realizations = getSetting(Setting.REALIZATIONS);
         const attribute = getSetting(Setting.ATTRIBUTE);
         const surfaceNames = getSetting(Setting.SURFACE_NAMES);
-        const sampleResolutionInMeters = getSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) ?? 1;
-        const intersectionExtensionLength = getSetting(Setting.INTERSECTION_EXTENSION_LENGTH) ?? 0;
 
-        if (sampleResolutionInMeters === null || !surfaceNames || !attribute) {
+        if (!surfaceNames || !attribute) {
             throw new Error("Invalid settings: Sample resolution, surface names or attribute are not set");
         }
 
-        const polylineWithSectionLengths = getStoredData("polylineWithSectionLengths");
-        if (!polylineWithSectionLengths) {
-            throw new Error("No polyline and actual section lengths found in stored data");
+        const requestedPolylineWithCumulatedLengths = getStoredData("requestedPolylineWithCumulatedLengths");
+        if (!requestedPolylineWithCumulatedLengths) {
+            throw new Error("No polyline and cumulated lengths found in stored data");
         }
-        if (polylineWithSectionLengths.polylineUtmXy.length < 4) {
-            throw new Error("Invalid polyline in stored data. Must contain at least two (x,y)-points");
+        if (
+            requestedPolylineWithCumulatedLengths.xUtmPoints.length < 2 &&
+            requestedPolylineWithCumulatedLengths.xUtmPoints.length !==
+                requestedPolylineWithCumulatedLengths.yUtmPoints.length &&
+            requestedPolylineWithCumulatedLengths.xUtmPoints.length !==
+                requestedPolylineWithCumulatedLengths.cumulatedHorizontalPolylineLengthArr.length + 1
+        ) {
+            throw new Error(
+                "Invalid polyline in stored data. Must contain at least two (x,y)-points, and cumulated length per polyline section",
+            );
         }
 
-        const queryKey = [
-            "intersectionRealizationSurfaces",
-            ensembleIdent,
-            realization,
-            attribute,
-            surfaceNames,
-            sampleResolutionInMeters,
-            polylineWithSectionLengths.polylineUtmXy,
-            polylineWithSectionLengths.actualSectionLengths,
-        ];
-        registerQueryKey(queryKey);
+        // Create list of surface name and its fetch promise
+        const surfaceNameAndFetchList = surfaceNames.map((surfaceName) => {
+            const queryOptions = postGetSampleSurfaceInPointsOptions({
+                query: {
+                    case_uuid: ensembleIdent?.getCaseUuid() ?? "",
+                    ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
+                    surface_name: surfaceName,
+                    surface_attribute: attribute ?? "",
+                    realization_nums: realizations ?? [],
+                },
+                body: {
+                    sample_points: {
+                        x_points: requestedPolylineWithCumulatedLengths.xUtmPoints,
+                        y_points: requestedPolylineWithCumulatedLengths.yUtmPoints,
+                    },
+                },
+            });
 
-        const initialHorizontalPosition = -intersectionExtensionLength;
-        const resampledIntersectionPolyline = createResampledPolylinePointsAndCumulatedLength(
-            polylineWithSectionLengths.polylineUtmXy,
-            polylineWithSectionLengths.actualSectionLengths,
-            initialHorizontalPosition,
-            sampleResolutionInMeters,
+            registerQueryKey(queryOptions.queryKey);
+
+            return { surfaceName: surfaceName, fetchPromise: queryClient.fetchQuery(queryOptions) };
+        });
+
+        // Assemble into one promise
+        const promise = Promise.all(surfaceNameAndFetchList.map((elm) => elm.fetchPromise)).then((fetchResults) =>
+            fetchResults.reduce<PerRealizationSurfacesData>((acc, surfaceRealizationSampleValuesArray, i) => {
+                acc[surfaceNameAndFetchList[i].surfaceName] = surfaceRealizationSampleValuesArray;
+                return acc;
+            }, {}),
         );
 
-        const surfacesIntersectionsPromises = Promise.all(
-            surfaceNames.map((surfaceName) => {
-                return queryClient.fetchQuery({
-                    ...postGetSurfaceIntersectionOptions({
-                        query: {
-                            case_uuid: ensembleIdent?.getCaseUuid() ?? "",
-                            ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
-                            realization_num: realization ?? 0,
-                            name: surfaceName,
-                            attribute: attribute ?? "",
-                        },
-                        body: {
-                            cumulative_length_polyline: {
-                                x_points: resampledIntersectionPolyline.xPoints,
-                                y_points: resampledIntersectionPolyline.yPoints,
-                                cum_lengths: resampledIntersectionPolyline.cumulatedPolylineLengthArr,
-                            },
-                        },
-                    }),
-                });
-            }),
-        );
-
-        return surfacesIntersectionsPromises;
+        return promise;
     }
-}
-
-function createResampledPolylinePointsAndCumulatedLength(
-    polylineUtmXy: number[],
-    actualSectionLengths: number[],
-    initialHorizontalPosition: number,
-    sampledResolution: number,
-): { xPoints: number[]; yPoints: number[]; cumulatedPolylineLengthArr: number[] } {
-    const xPoints: number[] = [];
-    const yPoints: number[] = [];
-    let cumulatedPolylineLength = initialHorizontalPosition;
-    const cumulatedPolylineLengthArr: number[] = [];
-    for (let i = 0; i < polylineUtmXy.length; i += 2) {
-        if (i > 0) {
-            const distance = point2Distance(
-                { x: polylineUtmXy[i], y: polylineUtmXy[i + 1] },
-                { x: polylineUtmXy[i - 2], y: polylineUtmXy[i - 1] },
-            );
-            const actualDistance = actualSectionLengths[i / 2 - 1];
-            const numPoints = Math.floor(distance / sampledResolution) - 1;
-            const scale = actualDistance / distance;
-            const scaledStepSize = sampledResolution * scale;
-
-            const vector: Vec2 = {
-                x: polylineUtmXy[i] - polylineUtmXy[i - 2],
-                y: polylineUtmXy[i + 1] - polylineUtmXy[i - 1],
-            };
-            const normalizedVector = normalizeVec2(vector);
-            for (let p = 1; p <= numPoints; p++) {
-                xPoints.push(polylineUtmXy[i - 2] + normalizedVector.x * sampledResolution * p);
-                yPoints.push(polylineUtmXy[i - 1] + normalizedVector.y * sampledResolution * p);
-                cumulatedPolylineLength += scaledStepSize;
-                cumulatedPolylineLengthArr.push(cumulatedPolylineLength);
-            }
-        }
-
-        xPoints.push(polylineUtmXy[i]);
-        yPoints.push(polylineUtmXy[i + 1]);
-
-        if (i > 0) {
-            const distance = point2Distance(
-                { x: polylineUtmXy[i], y: polylineUtmXy[i + 1] },
-                { x: xPoints[xPoints.length - 1], y: yPoints[yPoints.length - 1] },
-            );
-
-            cumulatedPolylineLength += distance;
-        }
-
-        cumulatedPolylineLengthArr.push(cumulatedPolylineLength);
-    }
-
-    return {
-        xPoints,
-        yPoints,
-        cumulatedPolylineLengthArr,
-    };
 }

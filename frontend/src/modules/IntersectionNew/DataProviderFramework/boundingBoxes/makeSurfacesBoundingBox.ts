@@ -3,10 +3,10 @@ import { Setting } from "@modules/_shared/DataProviderFramework/settings/setting
 import type { TransformerArgs } from "@modules/_shared/DataProviderFramework/visualization/VisualizationAssembler";
 
 import type {
-    IntersectionSurfacesData,
-    IntersectionSurfacesSettings,
-    IntersectionSurfacesStoredData,
-} from "../customDataProviderImplementations/IntersectionSurfacesProvider";
+    RealizationSurfacesData,
+    RealizationSurfacesSettings,
+    RealizationSurfacesStoredData,
+} from "../customDataProviderImplementations/RealizationSurfacesProvider";
 
 /**
  * Build a bounding box for the intersection surface data.
@@ -19,9 +19,9 @@ export function makeSurfacesBoundingBox({
     getSetting,
     getStoredData,
 }: TransformerArgs<
-    IntersectionSurfacesSettings,
-    IntersectionSurfacesData,
-    IntersectionSurfacesStoredData,
+    RealizationSurfacesSettings,
+    RealizationSurfacesData,
+    RealizationSurfacesStoredData,
     any
 >): BBox | null {
     const data = getData();

@@ -15,12 +15,14 @@ import { makeGridBoundingBox } from "@modules/IntersectionNew/DataProviderFramew
 import { makeSeismicBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeSeismicBoundingBox";
 import { makeSurfacesBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeSurfacesBoundingBox";
 import { EnsembleWellborePicksProvider } from "@modules/IntersectionNew/DataProviderFramework/customDataProviderImplementations/EnsembleWellborePicksProvider";
-import { IntersectionSurfacesProvider } from "@modules/IntersectionNew/DataProviderFramework/customDataProviderImplementations/IntersectionSurfacesProvider";
+import { PerRealizationSurfacesProvider } from "@modules/IntersectionNew/DataProviderFramework/customDataProviderImplementations/PerRealizationSurfacesProvider";
+import { RealizationSurfacesProvider } from "@modules/IntersectionNew/DataProviderFramework/customDataProviderImplementations/RealizationSurfacesProvider";
 import { CustomDataProviderType } from "@modules/IntersectionNew/DataProviderFramework/customDataProviderImplementations/dataProviderTypes";
 import type { IntersectionInjectedData } from "@modules/IntersectionNew/DataProviderFramework/injectedDataType";
 import { createGridLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/createGridLayerItemsMaker";
 import { createSeismicLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/createSeismicLayerItemsMaker";
 import { createSurfacesLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/createSurfacesLayerItemsMaker";
+import { createUncertaintySurfacesLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/createUncertaintySurfacesLayerItemsMaker";
 import { createWellborePicksLayerItemsMaker } from "@modules/IntersectionNew/DataProviderFramework/visualization/createWellborePicksLayerItemsMaker";
 import { makeEsvViewDataCollection } from "@modules/IntersectionNew/DataProviderFramework/visualization/makeEsvViewDataCollection";
 import type { Interfaces } from "@modules/IntersectionNew/interfaces";
@@ -128,11 +130,20 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
 );
 
 VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
-    CustomDataProviderType.INTERSECTION_REALIZATION_SURFACES,
-    IntersectionSurfacesProvider,
+    CustomDataProviderType.REALIZATION_SURFACES,
+    RealizationSurfacesProvider,
     {
         transformToVisualization: createSurfacesLayerItemsMaker,
         transformToBoundingBox: makeSurfacesBoundingBox,
+    },
+);
+
+VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
+    CustomDataProviderType.PER_REALIZATION_SURFACES,
+    PerRealizationSurfacesProvider,
+    {
+        transformToVisualization: createUncertaintySurfacesLayerItemsMaker,
+        // transformToBoundingBox: makeSurfacesBoundingBox,
     },
 );
 
@@ -147,6 +158,7 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
     const [prevBounds, setPrevBounds] = React.useState<{ x: [number, number]; y: [number, number] } | null>(null);
     const [isInitialProviderViewportSet, setIsInitialProviderViewportSet] = React.useState<boolean>(false);
 
+    // How to detect new "order" of providers in settings/tree?
     usePublishSubscribeTopicValue(props.dataProviderManager, DataProviderManagerTopic.DATA_REVISION);
 
     const fieldIdentifier: string | null = props.dataProviderManager.getGlobalSetting("fieldId");
@@ -219,9 +231,25 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
                 .flat(),
         );
 
+        // Make LayerItems for each visualization
+        const perProviderLayerItems: LayerItem[][] = [];
         for (const visualizationMaker of providerVisualizationMakers) {
-            assemblerLayerItems.push(...visualizationMaker.makeLayerItems(intersectionReferenceSystem));
+            perProviderLayerItems.push(visualizationMaker.makeLayerItems(intersectionReferenceSystem));
         }
+
+        // Assign esv LayerItem order, reverse
+        const numProviders = perProviderLayerItems.length;
+        for (const [index, providerLayerItems] of perProviderLayerItems.entries()) {
+            const layerItemOrder = numProviders - index;
+            for (const providerItem of providerLayerItems) {
+                if (providerItem.options) {
+                    providerItem.options.order = layerItemOrder;
+                }
+            }
+        }
+
+        // Add ordered layers to assembler layers
+        assemblerLayerItems.push(...perProviderLayerItems.flat());
 
         if (viewIntersection.type === IntersectionType.WELLBORE) {
             if (wellboreHeadersQuery.data && wellboreHeadersQuery.data.length > 0) {
@@ -233,7 +261,7 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
                 );
             }
 
-            const layerOrder = assemblerLayerItems.length + 1; // Place layers on top of factory layers
+            const layerOrder = providerVisualizationMakers.length * 2 + 1; // Place layers on top of factory layers
             const wellboreCasingsData =
                 wellboreCasings.data && wellboreCasings.data.length > 0 ? wellboreCasings.data : null;
             visualizationLayerItems.push(

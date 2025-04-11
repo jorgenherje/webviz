@@ -26,7 +26,7 @@ export function createWellborePicksLayerItemsMaker({
         makeLayerItems: (intersectionReferenceSystem) => {
             return [
                 {
-                    id,
+                    id: `${id}-wellbore-picks-layer`,
                     name,
                     type: LayerType.CALLOUT_CANVAS,
                     hoverable: false,

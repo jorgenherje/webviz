@@ -77,7 +77,15 @@ export function DataProviderManagerWrapper(props: DataProviderManagerWrapperProp
             case "realization-surfaces":
                 groupDelegate.prependChild(
                     DataProviderRegistry.makeDataProvider(
-                        CustomDataProviderType.INTERSECTION_REALIZATION_SURFACES,
+                        CustomDataProviderType.REALIZATION_SURFACES,
+                        props.dataProviderManager,
+                    ),
+                );
+                return;
+            case "per-realization-uncertainty-surfaces":
+                groupDelegate.prependChild(
+                    DataProviderRegistry.makeDataProvider(
+                        CustomDataProviderType.PER_REALIZATION_SURFACES,
                         props.dataProviderManager,
                     ),
                 );
@@ -217,28 +225,8 @@ const ACTIONS: ActionGroup[] = [
         ],
     },
     {
-        label: "Layers",
+        label: "Intersections",
         children: [
-            {
-                label: "Surfaces",
-                children: [
-                    {
-                        identifier: "realization-surfaces",
-                        icon: <Icon data={surface_layer} fontSize="small" />,
-                        label: "Realization Surfaces",
-                    },
-                ],
-            },
-            {
-                label: "Wells",
-                children: [
-                    {
-                        identifier: "wellbore-picks",
-                        icon: <Icon data={wellbore} fontSize="small" />,
-                        label: "Wellbore Picks",
-                    },
-                ],
-            },
             {
                 label: "Seismic",
                 children: [
@@ -255,12 +243,37 @@ const ACTIONS: ActionGroup[] = [
                 ],
             },
             {
-                label: "Others",
+                label: "Grid",
                 children: [
                     {
                         identifier: "realization-grid",
                         icon: <Icon data={grid_layer} fontSize="small" />,
                         label: "Realization Grid",
+                    },
+                ],
+            },
+            {
+                label: "Surfaces",
+                children: [
+                    {
+                        identifier: "realization-surfaces",
+                        icon: <Icon data={surface_layer} fontSize="small" />,
+                        label: "Realization Surfaces",
+                    },
+                    {
+                        identifier: "per-realization-uncertainty-surfaces",
+                        icon: <Icon data={surface_layer} fontSize="small" />,
+                        label: "Per Realization Uncertainty Surfaces",
+                    },
+                ],
+            },
+            {
+                label: "Wells",
+                children: [
+                    {
+                        identifier: "wellbore-picks",
+                        icon: <Icon data={wellbore} fontSize="small" />,
+                        label: "Wellbore Picks",
                     },
                 ],
             },

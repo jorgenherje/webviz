@@ -1,10 +1,20 @@
-import { getDrilledWellboreHeadersOptions, getGridModelsInfoOptions, postGetPolylineIntersectionOptions } from "@api";
+import type { SurfaceIntersectionData_api } from "@api";
+import {
+    SurfaceAttributeType_api,
+    getDrilledWellboreHeadersOptions,
+    getRealizationSurfacesMetadataOptions,
+    postGetSurfaceIntersectionOptions,
+} from "@api";
 import { IntersectionType } from "@framework/types/intersection";
+import type {
+    CustomDataProviderImplementation,
+    DataProviderInformationAccessors,
+    FetchDataParams,
+} from "@modules/_shared/DataProviderFramework/interfacesAndTypes/customDataProviderImplementation";
+import type { DefineDependenciesArgs } from "@modules/_shared/DataProviderFramework/interfacesAndTypes/customSettingsHandler";
 import type { IntersectionSettingValue } from "@modules/_shared/DataProviderFramework/settings/implementations/IntersectionSetting";
 import type { MakeSettingTypesMap } from "@modules/_shared/DataProviderFramework/settings/settingsDefinitions";
 import { Setting } from "@modules/_shared/DataProviderFramework/settings/settingsDefinitions";
-import type { PolylineIntersection_trans } from "@modules/_shared/Intersection/gridIntersectionTransform";
-import { transformPolylineIntersection } from "@modules/_shared/Intersection/gridIntersectionTransform";
 import type { PolylineWithSectionLengths } from "@modules/_shared/Intersection/intersectionPolylineTypes";
 import type {
     PolylineIntersectionSpecification,
@@ -14,136 +24,84 @@ import { makeIntersectionPolylineWithSectionLengthsPromise } from "@modules/_sha
 
 import { isEqual } from "lodash";
 
-import type {
-    CustomDataProviderImplementation,
-    DataProviderInformationAccessors,
-    FetchDataParams,
-} from "../../interfacesAndTypes/customDataProviderImplementation";
-import type { DefineDependenciesArgs } from "../../interfacesAndTypes/customSettingsHandler";
+import { createResampledPolylinePointsAndCumulatedLengthArray } from "./utils";
 
-const intersectionRealizationGridSettings = [
+const realizationSurfacesSettings = [
     Setting.INTERSECTION,
     Setting.INTERSECTION_EXTENSION_LENGTH,
     Setting.ENSEMBLE,
     Setting.REALIZATION,
     Setting.ATTRIBUTE,
-    Setting.GRID_NAME,
-    Setting.TIME_OR_INTERVAL,
-    Setting.SHOW_GRID_LINES,
-    Setting.COLOR_SCALE,
+    Setting.SURFACE_NAMES,
+    Setting.SAMPLE_RESOLUTION_IN_METERS,
+    Setting.COLOR_SET,
 ] as const;
-export type IntersectionRealizationGridSettings = typeof intersectionRealizationGridSettings;
-type SettingsWithTypes = MakeSettingTypesMap<IntersectionRealizationGridSettings>;
+export type RealizationSurfacesSettings = typeof realizationSurfacesSettings;
+type SettingsWithTypes = MakeSettingTypesMap<RealizationSurfacesSettings>;
 
-export type IntersectionRealizationGridStoredData = {
+export type RealizationSurfacesStoredData = {
     polylineWithSectionLengths: PolylineWithSectionLengths;
 };
 
-export type IntersectionRealizationGridData = PolylineIntersection_trans;
+export type RealizationSurfacesData = SurfaceIntersectionData_api[];
 
-export class IntersectionRealizationGridProvider
+export class RealizationSurfacesProvider
     implements
         CustomDataProviderImplementation<
-            IntersectionRealizationGridSettings,
-            IntersectionRealizationGridData,
-            IntersectionRealizationGridStoredData
+            RealizationSurfacesSettings,
+            RealizationSurfacesData,
+            RealizationSurfacesStoredData
         >
 {
-    settings = intersectionRealizationGridSettings;
+    settings = realizationSurfacesSettings;
 
-    private _isExtensionLengthEnabled = false;
-
-    constructor(isExtensionLengthEnabled: boolean) {
-        this._isExtensionLengthEnabled = isExtensionLengthEnabled;
-    }
-
-    getDefaultSettingsValues() {
-        return {
-            [Setting.SHOW_GRID_LINES]: false,
-        };
-    }
-
-    getDefaultName(): string {
-        return "Intersection Realization Grid";
+    getDefaultName() {
+        return "Realization Surfaces";
     }
 
     doSettingsChangesRequireDataRefetch(prevSettings: SettingsWithTypes, newSettings: SettingsWithTypes): boolean {
         return !isEqual(prevSettings, newSettings);
     }
 
-    makeValueRange({
-        getData,
-    }: DataProviderInformationAccessors<
-        IntersectionRealizationGridSettings,
-        IntersectionRealizationGridData,
-        IntersectionRealizationGridStoredData
-    >): [number, number] | null {
-        const data = getData();
-        if (!data) {
-            return null;
-        }
-
-        if (data) {
-            return [data.min_grid_prop_value, data.max_grid_prop_value];
-        }
-
-        return null;
-    }
-
     areCurrentSettingsValid({
         getSetting,
     }: DataProviderInformationAccessors<
-        IntersectionRealizationGridSettings,
-        IntersectionRealizationGridData,
-        IntersectionRealizationGridStoredData
+        RealizationSurfacesSettings,
+        RealizationSurfacesData,
+        RealizationSurfacesStoredData
     >): boolean {
-        let isValidExtensionLength = true;
-        if (this._isExtensionLengthEnabled) {
-            // Must have extension length for wellbore
-            isValidExtensionLength =
-                getSetting(Setting.INTERSECTION)?.type !== IntersectionType.WELLBORE ||
-                getSetting(Setting.INTERSECTION_EXTENSION_LENGTH) !== null;
-        }
+        // Extension has to be set if intersection is wellbore
+        const isValidIntersectionExtensionLength =
+            getSetting(Setting.INTERSECTION)?.type !== IntersectionType.WELLBORE ||
+            getSetting(Setting.INTERSECTION_EXTENSION_LENGTH) !== null;
 
         return (
             getSetting(Setting.INTERSECTION) !== null &&
-            isValidExtensionLength &&
+            isValidIntersectionExtensionLength &&
             getSetting(Setting.ENSEMBLE) !== null &&
             getSetting(Setting.REALIZATION) !== null &&
-            getSetting(Setting.GRID_NAME) !== null &&
             getSetting(Setting.ATTRIBUTE) !== null &&
-            getSetting(Setting.TIME_OR_INTERVAL) !== null &&
-            getSetting(Setting.SHOW_GRID_LINES) !== null &&
-            getSetting(Setting.COLOR_SCALE) !== null
+            getSetting(Setting.SURFACE_NAMES) !== null &&
+            getSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) !== null
         );
     }
 
     defineDependencies({
         helperDependency,
         availableSettingsUpdater,
-        settingAttributesUpdater,
-        storedDataUpdater,
         queryClient,
         workbenchSession,
-    }: DefineDependenciesArgs<IntersectionRealizationGridSettings, IntersectionRealizationGridStoredData>): void {
-        const isExtensionLengthIncluded = this._isExtensionLengthEnabled;
-
-        settingAttributesUpdater(Setting.INTERSECTION_EXTENSION_LENGTH, () => {
-            if (isExtensionLengthIncluded) {
-                return { enabled: true, visible: true };
-            }
-            return { enabled: false, visible: false };
-        });
-
+        storedDataUpdater,
+    }: DefineDependenciesArgs<RealizationSurfacesSettings, RealizationSurfacesStoredData>): void {
         availableSettingsUpdater(Setting.ENSEMBLE, ({ getGlobalSetting }) => {
             const fieldIdentifier = getGlobalSetting("fieldId");
             const ensembles = getGlobalSetting("ensembles");
 
-            const ensembleIdents = ensembles
+            const ensembleIdentsForField = ensembles
                 .filter((ensemble) => ensemble.getFieldIdentifier() === fieldIdentifier)
                 .map((ensemble) => ensemble.getIdent());
 
-            return ensembleIdents;
+            return ensembleIdentsForField;
         });
 
         availableSettingsUpdater(Setting.REALIZATION, ({ getLocalSetting, getGlobalSetting }) => {
@@ -155,58 +113,7 @@ export class IntersectionRealizationGridProvider
             }
 
             const realizations = realizationFilterFunc(ensembleIdent);
-
             return [...realizations];
-        });
-
-        const realizationGridDataDep = helperDependency(async ({ getLocalSetting, abortSignal }) => {
-            const ensembleIdent = getLocalSetting(Setting.ENSEMBLE);
-            const realization = getLocalSetting(Setting.REALIZATION);
-
-            if (!ensembleIdent || realization === null) {
-                return null;
-            }
-
-            return await queryClient.fetchQuery({
-                ...getGridModelsInfoOptions({
-                    query: {
-                        case_uuid: ensembleIdent.getCaseUuid(),
-                        ensemble_name: ensembleIdent.getEnsembleName(),
-                        realization_num: realization,
-                    },
-                    signal: abortSignal,
-                }),
-            });
-        });
-
-        availableSettingsUpdater(Setting.GRID_NAME, ({ getHelperDependency }) => {
-            const data = getHelperDependency(realizationGridDataDep);
-
-            if (!data) {
-                return [];
-            }
-
-            const availableGridNames = [...Array.from(new Set(data.map((gridModelInfo) => gridModelInfo.grid_name)))];
-
-            return availableGridNames;
-        });
-
-        availableSettingsUpdater(Setting.ATTRIBUTE, ({ getLocalSetting, getHelperDependency }) => {
-            const gridName = getLocalSetting(Setting.GRID_NAME);
-            const data = getHelperDependency(realizationGridDataDep);
-
-            if (!gridName || !data) {
-                return [];
-            }
-
-            const gridAttributeArr =
-                data.find((gridModel) => gridModel.grid_name === gridName)?.property_info_arr ?? [];
-
-            const availableGridAttributes = [
-                ...Array.from(new Set(gridAttributeArr.map((gridAttribute) => gridAttribute.property_name))),
-            ];
-
-            return availableGridAttributes;
         });
 
         const wellboreHeadersDep = helperDependency(async function fetchData({ getLocalSetting, abortSignal }) {
@@ -238,6 +145,7 @@ export class IntersectionRealizationGridProvider
             const intersectionPolylines = getGlobalSetting("intersectionPolylines");
 
             const intersectionOptions: IntersectionSettingValue[] = [];
+
             if (wellboreHeaders) {
                 for (const wellboreHeader of wellboreHeaders) {
                     intersectionOptions.push({
@@ -265,29 +173,53 @@ export class IntersectionRealizationGridProvider
             return [minExtensionLength, maxExtensionLength];
         });
 
-        availableSettingsUpdater(Setting.TIME_OR_INTERVAL, ({ getLocalSetting, getHelperDependency }) => {
-            const gridName = getLocalSetting(Setting.GRID_NAME);
-            const gridAttribute = getLocalSetting(Setting.ATTRIBUTE);
-            const data = getHelperDependency(realizationGridDataDep);
+        const depthSurfaceMetadataDep = helperDependency(async ({ getLocalSetting, abortSignal }) => {
+            const ensembleIdent = getLocalSetting(Setting.ENSEMBLE);
 
-            if (!gridName || !gridAttribute || !data) {
+            if (!ensembleIdent) {
+                return null;
+            }
+
+            const surfaceMetadata = await queryClient.fetchQuery({
+                ...getRealizationSurfacesMetadataOptions({
+                    query: {
+                        case_uuid: ensembleIdent.getCaseUuid(),
+                        ensemble_name: ensembleIdent.getEnsembleName(),
+                    },
+                    signal: abortSignal,
+                }),
+            });
+
+            const depthSurfacesMetadata = surfaceMetadata.surfaces.filter(
+                (elm) => elm.attribute_type === SurfaceAttributeType_api.DEPTH,
+            );
+            return depthSurfacesMetadata;
+        });
+
+        availableSettingsUpdater(Setting.ATTRIBUTE, ({ getHelperDependency }) => {
+            const depthSurfacesMetadata = getHelperDependency(depthSurfaceMetadataDep);
+
+            if (!depthSurfacesMetadata) {
                 return [];
             }
 
-            const gridAttributeArr =
-                data.find((gridModel) => gridModel.grid_name === gridName)?.property_info_arr ?? [];
+            return Array.from(new Set(depthSurfacesMetadata.map((elm) => elm.attribute_name)));
+        });
 
-            const availableTimeOrIntervals = [
-                ...Array.from(
-                    new Set(
-                        gridAttributeArr
-                            .filter((attr) => attr.property_name === gridAttribute)
-                            .map((gridAttribute) => gridAttribute.iso_date_or_interval ?? "NO_TIME"),
-                    ),
-                ),
-            ];
+        availableSettingsUpdater(Setting.SURFACE_NAMES, ({ getHelperDependency }) => {
+            const depthSurfacesMetadata = getHelperDependency(depthSurfaceMetadataDep);
 
-            return availableTimeOrIntervals;
+            if (!depthSurfacesMetadata) {
+                return [];
+            }
+
+            return Array.from(new Set(depthSurfacesMetadata.map((elm) => elm.name)));
+        });
+
+        availableSettingsUpdater(Setting.SAMPLE_RESOLUTION_IN_METERS, () => {
+            const minSampleResolution = 1;
+            const maxSampleResolution = 100;
+            return [minSampleResolution, maxSampleResolution];
         });
 
         // Create intersection polyline and actual section lengths data asynchronously
@@ -368,17 +300,19 @@ export class IntersectionRealizationGridProvider
         registerQueryKey,
         queryClient,
     }: FetchDataParams<
-        IntersectionRealizationGridSettings,
-        IntersectionRealizationGridData,
-        IntersectionRealizationGridStoredData
-    >): Promise<IntersectionRealizationGridData> {
+        RealizationSurfacesSettings,
+        RealizationSurfacesData,
+        RealizationSurfacesStoredData
+    >): Promise<RealizationSurfacesData> {
         const ensembleIdent = getSetting(Setting.ENSEMBLE);
-        const realizationNum = getSetting(Setting.REALIZATION);
-        const gridName = getSetting(Setting.GRID_NAME);
-        const parameterName = getSetting(Setting.ATTRIBUTE);
-        let timeOrInterval = getSetting(Setting.TIME_OR_INTERVAL);
-        if (timeOrInterval === "NO_TIME") {
-            timeOrInterval = null;
+        const realization = getSetting(Setting.REALIZATION);
+        const attribute = getSetting(Setting.ATTRIBUTE);
+        const surfaceNames = getSetting(Setting.SURFACE_NAMES);
+        const sampleResolutionInMeters = getSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) ?? 1;
+        const intersectionExtensionLength = getSetting(Setting.INTERSECTION_EXTENSION_LENGTH) ?? 0;
+
+        if (sampleResolutionInMeters === null || !surfaceNames || !attribute) {
+            throw new Error("Invalid settings: Sample resolution, surface names or attribute are not set");
         }
 
         const polylineWithSectionLengths = getStoredData("polylineWithSectionLengths");
@@ -389,22 +323,39 @@ export class IntersectionRealizationGridProvider
             throw new Error("Invalid polyline in stored data. Must contain at least two (x,y)-points");
         }
 
-        const queryOptions = postGetPolylineIntersectionOptions({
-            query: {
-                case_uuid: ensembleIdent?.getCaseUuid() ?? "",
-                ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
-                grid_name: gridName ?? "",
-                parameter_name: parameterName ?? "",
-                parameter_time_or_interval_str: timeOrInterval,
-                realization_num: realizationNum ?? 0,
-            },
-            body: { polyline_utm_xy: polylineWithSectionLengths.polylineUtmXy },
-        });
+        const initialHorizontalPosition = -intersectionExtensionLength;
+        const resampledIntersectionPolyline = createResampledPolylinePointsAndCumulatedLengthArray(
+            polylineWithSectionLengths.polylineUtmXy,
+            polylineWithSectionLengths.actualSectionLengths,
+            initialHorizontalPosition,
+            sampleResolutionInMeters,
+        );
 
-        registerQueryKey(queryOptions.queryKey);
+        const surfacesIntersectionPromises = Promise.all(
+            surfaceNames.map((surfaceName) => {
+                const queryOptions = postGetSurfaceIntersectionOptions({
+                    query: {
+                        case_uuid: ensembleIdent?.getCaseUuid() ?? "",
+                        ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
+                        realization_num: realization ?? 0,
+                        name: surfaceName,
+                        attribute: attribute ?? "",
+                    },
+                    body: {
+                        cumulative_length_polyline: {
+                            x_points: resampledIntersectionPolyline.xPoints,
+                            y_points: resampledIntersectionPolyline.yPoints,
+                            cum_lengths: resampledIntersectionPolyline.cumulatedHorizontalPolylineLengthArr,
+                        },
+                    },
+                });
 
-        const gridIntersectionPromise = queryClient.fetchQuery(queryOptions).then(transformPolylineIntersection);
+                registerQueryKey(queryOptions.queryKey);
 
-        return gridIntersectionPromise;
+                return queryClient.fetchQuery(queryOptions);
+            }),
+        );
+
+        return surfacesIntersectionPromises;
     }
 }

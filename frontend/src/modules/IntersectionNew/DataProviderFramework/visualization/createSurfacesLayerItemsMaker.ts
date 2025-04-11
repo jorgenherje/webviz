@@ -7,16 +7,17 @@ import type {
 import { LayerType } from "@modules/_shared/components/EsvIntersection";
 
 import type {
-    IntersectionSurfacesData,
-    IntersectionSurfacesSettings,
-} from "../customDataProviderImplementations/IntersectionSurfacesProvider";
+    RealizationSurfacesData,
+    RealizationSurfacesSettings,
+} from "../customDataProviderImplementations/RealizationSurfacesProvider";
 
 export function createSurfacesLayerItemsMaker({
     id,
     name,
+    isLoading,
     getData,
     getSetting,
-}: TransformerArgs<IntersectionSurfacesSettings, IntersectionSurfacesData, any, any>): EsvLayerItemsMaker | null {
+}: TransformerArgs<RealizationSurfacesSettings, RealizationSurfacesData, any, any>): EsvLayerItemsMaker | null {
     const data = getData();
     const colorSet = getSetting(Setting.COLOR_SET);
 
@@ -24,12 +25,12 @@ export function createSurfacesLayerItemsMaker({
         return null;
     }
 
-    let currentColor = colorSet.getFirstColor();
+    let currentColor = isLoading ? "#aaaaaa" : colorSet.getFirstColor();
     const surfaceData: SurfaceData = {
         areas: [],
         lines: data.map((surface) => {
             const color = currentColor;
-            currentColor = colorSet.getNextColor();
+            currentColor = isLoading ? "#aaaaaa" : colorSet.getNextColor();
             return {
                 data: surface.cum_lengths.map((el, index) => [el, surface.z_points[index]]),
                 color: color,
@@ -47,13 +48,12 @@ export function createSurfacesLayerItemsMaker({
 
             return [
                 {
-                    id: `${id}-surfaces`,
+                    id: `${id}-surfaces-layer`,
                     name: name,
                     type: LayerType.GEOMODEL_CANVAS,
                     hoverable: true,
                     options: {
                         data: surfaceData,
-                        // order,
                         referenceSystem: intersectionReferenceSystem,
                     },
                 },
@@ -63,7 +63,6 @@ export function createSurfacesLayerItemsMaker({
                     type: LayerType.GEOMODEL_LABELS,
                     options: {
                         data: surfaceData,
-                        // order,
                         referenceSystem: intersectionReferenceSystem,
                     },
                 },

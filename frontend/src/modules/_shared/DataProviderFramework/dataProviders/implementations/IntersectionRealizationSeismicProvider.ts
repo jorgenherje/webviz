@@ -406,34 +406,24 @@ export class IntersectionRealizationSeismicProvider
             throw new Error("Invalid seismic fence polyline in stored data. Must contain at least two (x,y)-points");
         }
 
-        const queryKey = [
-            "seismicIntersection",
-            ensembleIdent,
-            realization,
-            attribute,
-            timeOrInterval,
-            seismicFencePolylineUtmXy,
-        ];
-        registerQueryKey(queryKey);
-
         const apiSeismicFencePolyline = createSeismicFencePolylineFromPolylineXy(seismicFencePolylineUtmXy);
-        const seismicFenceDataPromise = queryClient
-            .fetchQuery({
-                ...postGetSeismicFenceOptions({
-                    query: {
-                        case_uuid: ensembleIdent?.getCaseUuid() ?? "",
-                        ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
-                        realization_num: realization ?? 0,
-                        seismic_attribute: attribute ?? "",
-                        time_or_interval_str: timeOrInterval ?? "",
-                        observed: this._dataSource === SeismicDataSource.OBSERVED,
-                    },
-                    body: {
-                        polyline: apiSeismicFencePolyline,
-                    },
-                }),
-            })
-            .then(transformSeismicFenceData);
+        const queryOptions = postGetSeismicFenceOptions({
+            query: {
+                case_uuid: ensembleIdent?.getCaseUuid() ?? "",
+                ensemble_name: ensembleIdent?.getEnsembleName() ?? "",
+                realization_num: realization ?? 0,
+                seismic_attribute: attribute ?? "",
+                time_or_interval_str: timeOrInterval ?? "",
+                observed: this._dataSource === SeismicDataSource.OBSERVED,
+            },
+            body: {
+                polyline: apiSeismicFencePolyline,
+            },
+        });
+
+        registerQueryKey(queryOptions.queryKey);
+
+        const seismicFenceDataPromise = queryClient.fetchQuery(queryOptions).then(transformSeismicFenceData);
 
         return seismicFenceDataPromise;
     }

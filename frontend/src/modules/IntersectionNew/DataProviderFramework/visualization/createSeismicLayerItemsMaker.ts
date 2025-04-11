@@ -69,6 +69,7 @@ export function createSeismicLayerItemsMaker({
 
     const sourcePolylineWithSectionLengths = getStoredData("sourcePolylineWithSectionLengths");
 
+    // if (isLoading || !fenceData || !sourcePolylineWithSectionLengths || !colorScale) {
     if (!fenceData || !sourcePolylineWithSectionLengths || !colorScale) {
         return null;
     }
@@ -98,7 +99,7 @@ export function createSeismicLayerItemsMaker({
 
             return [
                 {
-                    id,
+                    id: `${id}-seismic-layer`,
                     name: name,
                     type: LayerType.SEISMIC,
                     options: {

@@ -12,6 +12,7 @@ import { Direction as GridLayerDirection, GridLayerSetting } from "./implementat
 import { InputNumberSetting } from "./implementations/InputNumberSetting";
 import { IntersectionSetting } from "./implementations/IntersectionSetting";
 import { SeismicSliceDirection, SeismicSliceSetting } from "./implementations/SeismicSliceSetting";
+import { SelectNumberSetting } from "./implementations/SelectNumberSetting";
 import { SelectStringSetting } from "./implementations/SelectStringSetting";
 import { SensitivitySetting } from "./implementations/SensitivitySetting";
 import { StatisticFunctionSetting } from "./implementations/StatisticFunctionSetting";
@@ -44,6 +45,7 @@ SettingRegistry.registerSetting(
 SettingRegistry.registerSetting(Setting.POLYGONS_ATTRIBUTE, "Polygons Attribute", DropdownStringSetting);
 SettingRegistry.registerSetting(Setting.POLYGONS_NAME, "Polygons Name", DropdownStringSetting);
 SettingRegistry.registerSetting(Setting.REALIZATION, "Realization", DropdownNumberSetting);
+SettingRegistry.registerSetting(Setting.REALIZATIONS, "Realizations", SelectNumberSetting);
 SettingRegistry.registerSetting(Setting.SEISMIC_CROSSLINE, "Seismic Crossline", SeismicSliceSetting, {
     customConstructorParameters: [SeismicSliceDirection.CROSSLINE],
 });
