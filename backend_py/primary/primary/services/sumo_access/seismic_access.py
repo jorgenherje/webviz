@@ -30,14 +30,33 @@ class SeismicAccess:
     async def get_seismic_cube_meta_list_async(self) -> List[SeismicCubeMeta]:
         realizations = await self._ensemble_context.realizationids_async
 
+        realization = realizations[0]
         seismic_context = self._ensemble_context.cubes.filter(
-            realization=realizations[0],
+            realization=realization,
         )
 
         length_cubes = await seismic_context.length_async()
         async with asyncio.TaskGroup() as tg:
             tasks = [tg.create_task(_get_seismic_cube_meta_async(seismic_context, i)) for i in range(length_cubes)]
         cube_meta_arr: list[SeismicCubeMeta] = [task.result() for task in tasks]
+
+        attr_list = [elm.seismic_attribute for elm in cube_meta_arr]
+
+        # Create dict of seismic attributes and number of occurrences
+        attr_count = {}
+        for attr in attr_list:
+            if attr in attr_count:
+                attr_count[attr] += 1
+            else:
+                attr_count[attr] = 1
+
+        # Sort the dict by attribute name
+        attr_count = dict(sorted(attr_count.items()))
+
+        # Logging
+        LOGGER.debug(f"Realization: {realization}, iteration_name: {self._iteration_name}, case_uuid: {self._case_uuid}")
+        LOGGER.debug(f"Seismic attributes: {attr_count}")
+
 
         return cube_meta_arr
 
@@ -107,6 +126,8 @@ async def _get_seismic_cube_meta_async(search_context: SearchContext, item_no: i
     seismic_cube = await search_context.getitem_async(item_no)
     t_start = seismic_cube["data"].get("time", {}).get("t0", {}).get("value", None)
     t_end = seismic_cube["data"].get("time", {}).get("t1", {}).get("value", None)
+
+    LOGGER.debug(f"Item_no: {item_no} - Seismic cube {seismic_cube['data']['tagname']} time: {t_start} - {t_end}")
 
     if not t_start and not t_end:
         raise ValueError(f"Cube {seismic_cube['data']['tagname']} has no time information")
