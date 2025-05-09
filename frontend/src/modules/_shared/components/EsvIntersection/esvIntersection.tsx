@@ -31,6 +31,7 @@ import {
     WellborepathLayer,
 } from "@equinor/esv-intersection";
 import { cloneDeep, isEqual } from "lodash";
+import { Renderer, RENDERER_TYPE, utils } from "pixi.js";
 
 import type { Viewport } from "@framework/types/viewport";
 import { useElementSize } from "@lib/hooks/useElementSize";
@@ -451,7 +452,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             newEsvController.addLayer(gridLayer);
             newEsvController.hideLayer("grid");
 
-            const newPixiRenderApplication = new PixiRenderApplication({
+            const newPixiRenderApplication = new CustomPixiRenderApplication({
                 context: null,
                 antialias: true,
                 hello: false,
@@ -486,8 +487,8 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 setPrevShowAxesLabels(undefined);
                 setPrevShowAxes(undefined);
                 setInteractionHandler(null);
+                newPixiRenderApplication.destroy();
                 newInteractionHandler.destroy();
-                newEsvController.removeAllLayers();
                 newEsvController.destroy();
             };
         },
@@ -559,4 +560,40 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             ></div>
         </>
     );
+}
+
+class CustomPixiRenderApplication extends PixiRenderApplication {
+    constructor(options: any) {
+        super(options);
+    }
+
+    destroy() {
+        this.stage?.destroy({
+            children: true,
+            texture: true,
+            baseTexture: true,
+        });
+
+        this.stage = undefined;
+
+        const renderType = this.renderer?.type;
+        const glContext = this.renderer instanceof Renderer ? this.renderer?.gl : undefined;
+
+        this.renderer?.destroy(true);
+
+        if (renderType === RENDERER_TYPE.WEBGL && glContext) {
+            const loseContextExt = glContext.getExtension("WEBGL_lose_context");
+            if (loseContextExt && !glContext.isContextLost()) {
+                loseContextExt.loseContext();
+            }
+        }
+
+        utils.clearTextureCache();
+
+        if (this.renderer?.view?.parentNode) {
+            this.renderer.view.parentNode.removeChild(this.renderer.view);
+        }
+
+        this.renderer = undefined;
+    }
 }
