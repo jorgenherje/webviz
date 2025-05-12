@@ -156,6 +156,7 @@ type SettingCategoryAvailableValuesIntersectionReducerMap = {
     [K in SettingCategory]?: {
         reducer: AvailableValuesIntersectionReducer<K>;
         startingValue: AvailableValuesType<PossibleSettingsForCategory<K>>;
+        isValid: (availableValues: AvailableValuesType<PossibleSettingsForCategory<K>>) => boolean;
     };
 };
 
@@ -307,6 +308,7 @@ export const settingCategoryAvailableValuesIntersectionReducerMap: SettingCatego
                 return accumulator.filter((value) => currentAvailableValues.some((av) => isEqual(av, value)));
             },
             startingValue: [],
+            isValid: (availableValues) => availableValues.length > 0,
         },
         [SettingCategory.MULTI_SELECT]: {
             reducer: (accumulator, currentAvailableValues) => {
@@ -316,6 +318,7 @@ export const settingCategoryAvailableValuesIntersectionReducerMap: SettingCatego
                 return accumulator.filter((value) => currentAvailableValues.some((av) => isEqual(av, value)));
             },
             startingValue: [],
+            isValid: (availableValues) => availableValues.length > 0,
         },
         [SettingCategory.NUMBER]: {
             reducer: (accumulator, currentAvailableValues) => {
@@ -324,7 +327,8 @@ export const settingCategoryAvailableValuesIntersectionReducerMap: SettingCatego
 
                 return [Math.max(min, currentMin), Math.min(max, currentMax)];
             },
-            startingValue: [Number.MIN_VALUE, Number.MAX_VALUE],
+            startingValue: [-Number.MAX_VALUE, Number.MAX_VALUE],
+            isValid: (availableValues) => availableValues[0] < availableValues[1],
         },
         [SettingCategory.RANGE]: {
             reducer: (accumulator, currentAvailableValues) => {
@@ -333,7 +337,8 @@ export const settingCategoryAvailableValuesIntersectionReducerMap: SettingCatego
 
                 return [Math.max(min, currentMin), Math.min(max, currentMax)];
             },
-            startingValue: [Number.MIN_VALUE, Number.MAX_VALUE],
+            startingValue: [-Number.MAX_VALUE, Number.MAX_VALUE],
+            isValid: (availableValues) => availableValues[0] < availableValues[1],
         },
     };
 
