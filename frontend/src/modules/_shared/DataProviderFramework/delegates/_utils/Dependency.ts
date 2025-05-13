@@ -31,13 +31,13 @@ export class Dependency<
     private _isLoading = false;
 
     private _localSettingManagerGetter: <K extends TKey>(key: K) => SettingManager<K>;
-    private _globalSettingGetter: <K extends keyof GlobalSettings>(key: K) => GlobalSettings[K] | null;
+    private _globalSettingGetter: <K extends keyof GlobalSettings>(key: K) => GlobalSettings[K] | undefined;
 
     private _makeLocalSettingGetter: <K extends TKey>(key: K, handler: (value: TSettingTypes[K]) => void) => void;
     private _localSettingLoadingStateGetter: <K extends TKey>(key: K) => boolean;
     private _makeGlobalSettingGetter: <K extends keyof GlobalSettings>(
         key: K,
-        handler: (value: GlobalSettings[K] | null) => void,
+        handler: (value: GlobalSettings[K] | undefined) => void,
     ) => void;
     private _cachedSettingsMap: Map<string, any> = new Map();
     private _cachedGlobalSettingsMap: Map<string, any> = new Map();
@@ -50,13 +50,13 @@ export class Dependency<
 
     constructor(
         localSettingManagerGetter: <K extends TKey>(key: K) => SettingManager<K>,
-        globalSettingGetter: <K extends keyof GlobalSettings>(key: K) => GlobalSettings[K] | null,
+        globalSettingGetter: <K extends keyof GlobalSettings>(key: K) => GlobalSettings[K] | undefined,
         updateFunc: UpdateFunc<TReturnValue, TSettings, TSettingTypes, TKey>,
         makeLocalSettingGetter: <K extends TKey>(key: K, handler: (value: TSettingTypes[K]) => void) => void,
         localSettingLoadingStateGetter: <K extends TKey>(key: K) => boolean,
         makeGlobalSettingGetter: <K extends keyof GlobalSettings>(
             key: K,
-            handler: (value: GlobalSettings[K] | null) => void,
+            handler: (value: GlobalSettings[K] | undefined) => void,
         ) => void,
     ) {
         this._localSettingManagerGetter = localSettingManagerGetter;
@@ -118,6 +118,13 @@ export class Dependency<
             this._numParentDependencies++;
         }
 
+        if (!this._cachedSettingsMap.has(settingName as string)) {
+            this._makeLocalSettingGetter(settingName, (value) => {
+                this._cachedSettingsMap.set(settingName as string, value);
+                this.invalidate();
+            });
+        }
+
         if (this._localSettingLoadingStateGetter(settingName)) {
             throw new DependencyLoadingError("Setting is loading");
         }
@@ -131,11 +138,6 @@ export class Dependency<
         const setting = this._localSettingManagerGetter(settingName);
         const value = setting.getValue();
         this._cachedSettingsMap.set(settingName as string, value);
-
-        this._makeLocalSettingGetter(settingName, (value) => {
-            this._cachedSettingsMap.set(settingName as string, value);
-            this.invalidate();
-        });
 
         setting.getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.IS_LOADING)(() => {
             const loading = setting.isLoading();
@@ -168,6 +170,13 @@ export class Dependency<
     }
 
     private getGlobalSetting<K extends keyof GlobalSettings>(settingName: K): GlobalSettings[K] {
+        if (!this._cachedGlobalSettingsMap.has(settingName as string)) {
+            this._makeGlobalSettingGetter(settingName, (value) => {
+                this._cachedGlobalSettingsMap.set(settingName as string, value);
+                this.invalidate();
+            });
+        }
+
         if (this._globalSettingGetter(settingName) === null) {
             throw new DependencyLoadingError("Setting is loading");
         }
@@ -175,11 +184,6 @@ export class Dependency<
         if (this._cachedGlobalSettingsMap.has(settingName as string)) {
             return this._cachedGlobalSettingsMap.get(settingName as string);
         }
-
-        this._makeGlobalSettingGetter(settingName, (value) => {
-            this._cachedGlobalSettingsMap.set(settingName as string, value);
-            this.invalidate();
-        });
 
         this._cachedGlobalSettingsMap.set(settingName as string, this._globalSettingGetter(settingName));
         return this._cachedGlobalSettingsMap.get(settingName as string);

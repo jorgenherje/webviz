@@ -1,3 +1,4 @@
+import type { GroupDelegate } from "../../delegates/GroupDelegate";
 import { UnsubscribeHandlerDelegate } from "../../delegates/UnsubscribeHandlerDelegate";
 import type { Item } from "../../interfacesAndTypes/entities";
 import type { AvailableValuesType } from "../../interfacesAndTypes/utils";
@@ -11,6 +12,7 @@ import { DataProvider } from "../DataProvider/DataProvider";
 import { DataProviderManagerTopic } from "../DataProviderManager/DataProviderManager";
 import { Group } from "../Group/Group";
 import type { SettingManager } from "../SettingManager/SettingManager";
+import { SharedSetting } from "../SharedSetting/SharedSetting";
 
 export class ExternalSettingController<
     TSetting extends Setting,
@@ -28,6 +30,14 @@ export class ExternalSettingController<
         this._setting = setting;
 
         const dataProviderManager = parentItem.getItemDelegate().getDataProviderManager();
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "data-provider-manager",
+            dataProviderManager
+                .getPublishSubscribeDelegate()
+                .makeSubscriberFunction(DataProviderManagerTopic.ITEMS_ABOUT_TO_CHANGE)(() => {
+                this.unregisterAllControlledSettings();
+            }),
+        );
         this._unsubscribeHandler.registerUnsubscribeFunction(
             "data-provider-manager",
             dataProviderManager.getPublishSubscribeDelegate().makeSubscriberFunction(DataProviderManagerTopic.ITEMS)(
@@ -56,11 +66,51 @@ export class ExternalSettingController<
         return this._setting;
     }
 
-    private updateControlledSettings(): void {
-        const oldControlledSettings = new Map(this._controlledSettings);
-        this._controlledSettings.clear();
-        this._availableValuesMap.clear();
+    private findControlledSettingsRecursively(
+        groupDelegate: GroupDelegate,
+        thisItem?: Item,
+    ): SettingManager<TSetting, TValue, TCategory>[] {
+        let children = groupDelegate.getChildren();
+        if (thisItem) {
+            const position = children.indexOf(thisItem);
+            if (position !== -1) {
+                children = children.slice(position + 1, children.length);
+            }
+        }
+        const foundSettings: SettingManager<TSetting, TValue, TCategory>[] = [];
 
+        for (const child of children) {
+            if (child instanceof DataProvider) {
+                const setting = child.getSettingsContextDelegate().getSettings()[this._setting.getType()];
+                if (setting) {
+                    foundSettings.push(setting);
+                }
+            } else if (child instanceof SharedSetting) {
+                if (child === this._parentItem) {
+                    continue;
+                }
+                const setting = child.getSharedSettingsDelegate().getWrappedSettings()[this._setting.getType()];
+                if (setting) {
+                    foundSettings.push(setting);
+                    break;
+                }
+            } else if (child instanceof Group) {
+                const sharedSettingsDelegate = child.getSharedSettingsDelegate();
+                if (sharedSettingsDelegate) {
+                    const setting = sharedSettingsDelegate.getWrappedSettings()[this._setting.getType()];
+                    if (setting) {
+                        foundSettings.push(setting);
+                        break;
+                    }
+                }
+                foundSettings.push(...this.findControlledSettingsRecursively(child.getGroupDelegate()));
+            }
+        }
+
+        return foundSettings;
+    }
+
+    private updateControlledSettings(): void {
         let parentGroup = this._parentItem.getItemDelegate().getParentGroup();
         if (this._parentItem instanceof Group) {
             parentGroup = this._parentItem.getGroupDelegate();
@@ -70,27 +120,17 @@ export class ExternalSettingController<
             return;
         }
 
-        const providers = parentGroup.getDescendantItems((item) => item instanceof DataProvider) as DataProvider<
-            any,
-            any
-        >[];
-
-        for (const provider of providers) {
-            const setting = provider.getSettingsContextDelegate().getSettings()[this._setting.getType()];
-            if (setting) {
-                this._controlledSettings.set(setting.getId(), setting);
-                this._availableValuesMap.set(setting.getId(), setting.getAvailableValues());
-                setting.registerExternalSettingController(this);
+        const settings = this.findControlledSettingsRecursively(parentGroup, this._parentItem);
+        for (const setting of settings) {
+            if (setting.isExternallyControlled()) {
+                continue;
             }
-        }
-
-        for (const settingId of oldControlledSettings.keys()) {
-            if (!this._controlledSettings.has(settingId)) {
-                const setting = oldControlledSettings.get(settingId);
-                if (setting) {
-                    setting.unregisterExternalSettingController();
-                }
-            }
+            this._controlledSettings.set(setting.getId(), setting);
+            this._availableValuesMap.set(
+                setting.getId(),
+                setting.getAvailableValues() as AvailableValuesType<TSetting>,
+            );
+            setting.registerExternalSettingController(this);
         }
 
         if (this._controlledSettings.size === 0) {
