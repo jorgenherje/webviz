@@ -342,7 +342,7 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
         }
     }
 
-    const colorScales = assemblerProduct.annotations.filter((elm) => isColorScaleWithId(elm));
+    const colorScales = view?.annotations.filter((elm) => isColorScaleWithId(elm)) ?? [];
 
     return (
         <div ref={mainDivRef} className="relative w-full h-full flex flex-col">
