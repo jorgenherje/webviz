@@ -31,13 +31,13 @@ export class Dependency<
     private _isLoading = false;
 
     private _localSettingManagerGetter: <K extends TKey>(key: K) => SettingManager<K>;
-    private _globalSettingGetter: <K extends keyof GlobalSettings>(key: K) => GlobalSettings[K] | undefined;
+    private _globalSettingGetter: <K extends keyof GlobalSettings>(key: K) => GlobalSettings[K] | null;
 
     private _makeLocalSettingGetter: <K extends TKey>(key: K, handler: (value: TSettingTypes[K]) => void) => void;
     private _localSettingLoadingStateGetter: <K extends TKey>(key: K) => boolean;
     private _makeGlobalSettingGetter: <K extends keyof GlobalSettings>(
         key: K,
-        handler: (value: GlobalSettings[K] | undefined) => void,
+        handler: (value: GlobalSettings[K] | null) => void,
     ) => void;
     private _cachedSettingsMap: Map<string, any> = new Map();
     private _cachedGlobalSettingsMap: Map<string, any> = new Map();
@@ -50,13 +50,13 @@ export class Dependency<
 
     constructor(
         localSettingManagerGetter: <K extends TKey>(key: K) => SettingManager<K>,
-        globalSettingGetter: <K extends keyof GlobalSettings>(key: K) => GlobalSettings[K] | undefined,
+        globalSettingGetter: <K extends keyof GlobalSettings>(key: K) => GlobalSettings[K] | null,
         updateFunc: UpdateFunc<TReturnValue, TSettings, TSettingTypes, TKey>,
         makeLocalSettingGetter: <K extends TKey>(key: K, handler: (value: TSettingTypes[K]) => void) => void,
         localSettingLoadingStateGetter: <K extends TKey>(key: K) => boolean,
         makeGlobalSettingGetter: <K extends keyof GlobalSettings>(
             key: K,
-            handler: (value: GlobalSettings[K] | undefined) => void,
+            handler: (value: GlobalSettings[K] | null) => void,
         ) => void,
     ) {
         this._localSettingManagerGetter = localSettingManagerGetter;
@@ -125,7 +125,7 @@ export class Dependency<
             });
         }
 
-        if (this._localSettingLoadingStateGetter(settingName)) {
+        if (this._localSettingLoadingStateGetter(settingName) && this._isInitialized) {
             throw new DependencyLoadingError("Setting is loading");
         }
 
@@ -177,8 +177,8 @@ export class Dependency<
             });
         }
 
-        if (this._globalSettingGetter(settingName) === null) {
-            throw new DependencyLoadingError("Setting is loading");
+        if (this._globalSettingGetter(settingName) === null && this._isInitialized) {
+            throw new DependencyLoadingError("Setting is not yet set");
         }
 
         if (this._cachedGlobalSettingsMap.has(settingName as string)) {
@@ -194,7 +194,7 @@ export class Dependency<
             this._numParentDependencies++;
         }
 
-        if (dep.getIsLoading()) {
+        if (dep.getIsLoading() && this._isInitialized) {
             throw new DependencyLoadingError("Dependency is loading");
         }
 
