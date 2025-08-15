@@ -54,6 +54,8 @@ export function EnsemblePicker(props: EnsemblePickerProps): React.ReactNode {
         return userInfo?.username.replace("@equinor.com", "").toLowerCase() ?? "";
     }, [userInfo]);
 
+    const [numberOfCases, setNumberOfCases] = React.useState<number>(0);
+
     const [currentStatusOptions, setCurrentStatusOptions] = React.useState<string[]>([]);
     const [selectedStandardResults, setSelectedStandardResults] = React.useState<string[]>([]);
     const [showOnlyMyCases, setShowOnlyMyCases] = React.useState<boolean>(
@@ -242,6 +244,10 @@ export function EnsemblePicker(props: EnsemblePickerProps): React.ReactNode {
         setTableFiltersState(newValue);
     }
 
+    function handleNumberOfCasesChange(newValue: number) {
+        setNumberOfCases(newValue);
+    }
+
     function handleRegularEnsembleChanged(ensembleNames: string[]) {
         setSelectedEnsembleName(ensembleNames[0]);
     }
@@ -278,40 +284,42 @@ export function EnsemblePicker(props: EnsemblePickerProps): React.ReactNode {
                 </QueryStateWrapper>
             </Label>
             <Label text="Case">
-                <QueryStateWrapper
+                {/* <QueryStateWrapper
                     queryResult={casesQuery}
                     errorComponent={<div className="text-red-500">Error loading cases</div>}
                     loadingComponent={<CircularProgress />}
-                >
-                    <div className="flex flex-col gap-4">
-                        <TagPicker
-                            placeholder="Filter by Standard Results..."
-                            tags={caseStandardResults.map((elm) => ({ label: elm, value: elm }))}
-                            value={selectedStandardResults}
-                            onChange={handleFilterByStandardResultsChange}
-                        />
-                        <div className="flex justify-end gap-4 items-center">
-                            <span className="grow text-sm text-slate-500">Select from {caseRowData.length} cases</span>
-                            <Label position="right" text="Official" title="Show only cases marked as official">
-                                <Switch checked={showOnlyOfficialCases} onChange={handleOfficialCasesSwitchChange} />
-                            </Label>
-                            <Label position="right" text="My cases" title="Show only my cases">
-                                <Switch checked={showOnlyMyCases} onChange={handleCasesByMeChange} />
-                            </Label>
-                        </div>
-                        <Table
-                            rowIdentifier="caseId"
-                            height={500}
-                            columns={caseTableColumns}
-                            rows={caseRowData}
-                            selectedRows={["selectedCaseUuid"]}
-                            filters={tableFiltersState}
-                            selectable
-                            onSelectedRowsChange={handleOnSelectRowsChange}
-                            onFiltersChange={handleFiltersChange}
-                        />
+                > */}
+                <div className="flex flex-col gap-4">
+                    <TagPicker
+                        placeholder="Filter by Standard Results..."
+                        tags={caseStandardResults.map((elm) => ({ label: elm, value: elm }))}
+                        value={selectedStandardResults}
+                        onChange={handleFilterByStandardResultsChange}
+                    />
+                    <div className="flex justify-end gap-4 items-center">
+                        <span className="grow text-sm text-slate-500">Select from {numberOfCases} cases</span>
+                        <Label position="right" text="Official" title="Show only cases marked as official">
+                            <Switch checked={showOnlyOfficialCases} onChange={handleOfficialCasesSwitchChange} />
+                        </Label>
+                        <Label position="right" text="My cases" title="Show only my cases">
+                            <Switch checked={showOnlyMyCases} onChange={handleCasesByMeChange} />
+                        </Label>
                     </div>
-                </QueryStateWrapper>
+                    <Table
+                        rowIdentifier="caseId"
+                        height={500}
+                        numPendingRows={!casesQuery.data ? "fill" : undefined}
+                        columns={caseTableColumns}
+                        rows={caseRowData}
+                        selectedRows={[selectedCaseUuid]}
+                        filters={tableFiltersState}
+                        selectable
+                        onSelectedRowsChange={handleOnSelectRowsChange}
+                        onFiltersChange={handleFiltersChange}
+                        onDataCollated={(data) => handleNumberOfCasesChange(data.length)}
+                    />
+                </div>
+                {/* </QueryStateWrapper> */}
             </Label>
             <Label text="Ensemble">
                 <QueryStateWrapper
