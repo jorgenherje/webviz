@@ -97,7 +97,7 @@ function RangeFilter(props: ColumnFilterImplementationProps<[number?, number?]>)
     const value = (props.value ?? []) as [min: number, max: number];
 
     return (
-        <div className="bg-white grid grid-cols-2 gap-1 h-full font-normal w-fit">
+        <div className="bg-white grid grid-cols-2 gap-1 h-full w-fit">
             <input
                 className="h-full min-w-0"
                 value={value[0] ?? ""}
@@ -146,7 +146,7 @@ function Tags(props: { tags: string[] }): React.ReactNode {
             {props.tags.map((t, i) => (
                 <div
                     key={t + i}
-                    className={tagColors[t as keyof typeof tagColors] + " rounded-xl px-2 py-1 text-xs text-white"}
+                    className={tagColors[t as keyof typeof tagColors] + " rounded-xl px-2 py-0.5 text-xs text-white"}
                 >
                     {t}
                 </div>
@@ -158,6 +158,9 @@ function Tags(props: { tags: string[] }): React.ReactNode {
 export const View = (props: ModuleViewProps<Interfaces>) => {
     const alternateColColors = props.viewContext.useSettingsToViewInterfaceValue("alternateColColors");
     const allowMultiSelect = props.viewContext.useSettingsToViewInterfaceValue("allowMultiSelect");
+    const numPending = props.viewContext.useSettingsToViewInterfaceValue("numPendingRows");
+    const fillPendingData = props.viewContext.useSettingsToViewInterfaceValue("fillPendingData");
+
     const tableData = props.viewContext.useSettingsToViewInterfaceValue("tableData");
 
     const [tableSortingState, setTableSortingState] = React.useState<TableSorting>([]);
@@ -165,8 +168,11 @@ export const View = (props: ModuleViewProps<Interfaces>) => {
 
     const [selectedRows, setSelectedRows] = React.useState<string[]>([]);
     const [hoveredItem, setHoveredItem] = React.useState<string | null>(null);
+    const [collatedData, setCollatedData] = React.useState<typeof tableData>([]);
 
     const [usingTheCoolFilters, setUsingTheCoolFilters] = React.useState(false);
+
+    const [scrollRange, setScrollRange] = React.useState<[number, number] | null>(null);
 
     function handleFilterUpdate(newFilter: TableFilters) {
         setUsingTheCoolFilters(false);
@@ -175,24 +181,6 @@ export const View = (props: ModuleViewProps<Interfaces>) => {
 
     return (
         <div className="h-full w-full flex flex-col">
-            {/* 
-            <h3 className="mt-6 font-extrabold text-lg">New (un-controlled)</h3>
-            <Table
-                rowIdentifier="id"
-                height={300}
-                columnDefMap={TABLE_DEFINITION}
-                rows={tableData as TableRowData<ColumnDefMap>[]}
-                alternatingColumnColors={alternateColColors}
-                selectable
-                multiSelect={allowMultiSelect}
-                // Listening to the internal changes, and make them update the controlled component
-                onSortingChange={setTableSortingState}
-                onFiltersChange={handleFilterUpdate}
-                onSelectedRowsChange={setSelectedRows}
-                onRowHover={setHoveredItem}
-            />
-             */}
-
             <h3 className="mt-6 font-extrabold text-lg">New (controlled)</h3>
 
             <div className="flex">
@@ -229,24 +217,31 @@ export const View = (props: ModuleViewProps<Interfaces>) => {
 
             <Table
                 rowIdentifier="id"
-                height={300}
+                height={"50%"}
+                numPendingRows={fillPendingData ? "fill" : numPending}
                 columns={TABLE_COLUMNS}
                 rows={tableData}
                 alternatingColumnColors={alternateColColors}
                 sorting={tableSortingState}
                 filters={tableFilterState}
                 selectable
+                multiColumnSort
+                rowHeight={50}
                 multiSelect={allowMultiSelect}
                 onSortingChange={setTableSortingState}
                 onFiltersChange={handleFilterUpdate}
                 onSelectedRowsChange={setSelectedRows}
                 onRowHover={setHoveredItem}
+                onDataCollated={setCollatedData}
+                onVisibleRowRangeChange={(start, end) => setScrollRange([start, end])}
             />
-
-            <div className="mt-4 text-xs italic text-right text-gray-600 flex justify-between">
+            <div className="mt-4 text-xs italic text-gray-600 grid grid-cols-4 w-full">
                 <span>Hovered: {hoveredItem ?? "None"}</span>
 
-                <span>{selectedRows?.length ?? 0} row(s) selected</span>
+                <span>Valid rows: {collatedData.length} </span>
+                <span className="text-center">[{scrollRange?.join(", ")}]</span>
+
+                <span className="text-right">{selectedRows?.length ?? 0} row(s) selected</span>
             </div>
         </div>
     );
