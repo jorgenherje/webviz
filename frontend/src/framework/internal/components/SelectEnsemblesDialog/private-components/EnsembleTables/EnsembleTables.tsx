@@ -119,7 +119,7 @@ export function EnsembleTables(props: EnsembleTablesProps): React.ReactNode {
             {/* Regular ensemble table */}
             <div className="flex flex-1 flex-col min-h-0">
                 <div className="flex justify-between items-center shrink-0 pt-1 pb-1">
-                    <div>Regular Ensembles</div>
+                    <div className="font-medium text-xl">Regular Ensembles</div>
                     <Button
                         variant="contained"
                         onClick={handleAddRegularEnsemble}
@@ -179,14 +179,14 @@ export function EnsembleTables(props: EnsembleTablesProps): React.ReactNode {
             <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex justify-between items-center shrink-0 pt-1 pb-1">
                     <div className="flex items-center">
+                        <div className="font-medium text-xl">Delta Ensembles</div>
                         <div className="fill-indigo-600">
                             <InfoOutlined
                                 fontSize="medium"
                                 titleAccess={`Create delta ensemble:\n\n"Delta Ensemble" = "Comparison Ensemble" - "Reference Ensemble"`}
-                                className="text-indigo-600 hover:text-indigo-700 hover:bg-gray-200 rounded-md cursor-help mr-2"
+                                className="text-indigo-600 cursor-help ml-2"
                             />
                         </div>
-                        <div>Delta Ensembles</div>
                     </div>
                     <Button
                         variant="contained"

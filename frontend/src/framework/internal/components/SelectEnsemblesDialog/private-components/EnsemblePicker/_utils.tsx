@@ -46,8 +46,9 @@ export function makeCaseTableColumns(
             columnId: "caseName",
             sizeInPercent: 30,
             renderData: (value, row) => (
-                <div title={`${value} - ${row.caseId}`} className="p-1 flex items-center">
-                    {value} <span className="text-xs text-slate-500"> {` - ${row.caseId}`}</span>
+                <div className="flex items-center gap-1 min-w-0" title={`${value} - ${row.caseId}`}>
+                    <span className="shrink-0">{value}</span>
+                    <span className="text-xs text-slate-500 min-w-0 truncate">- {row.caseId}</span>
                 </div>
             ),
             filter: {

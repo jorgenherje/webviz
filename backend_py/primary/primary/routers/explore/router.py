@@ -80,8 +80,8 @@ async def get_ensemble_details(
     realizations = await case_inspector.get_realizations_in_ensemble_async(ensemble_name)
     field_identifiers = await case_inspector.get_field_identifiers_async()
     stratigraphic_column_identifier = await case_inspector.get_stratigraphic_column_identifier_async()
-    timestamps = await case_inspector.get_iteration_timestamps_async(ensemble_name)
-    standard_results = await case_inspector.get_standard_results_in_iteration_async(ensemble_name)
+    timestamps = await case_inspector.get_ensemble_timestamps_async(ensemble_name)
+    standard_results = await case_inspector.get_standard_results_in_ensemble_async(ensemble_name)
 
     if len(field_identifiers) != 1:
         raise NotImplementedError("Multiple field identifiers not supported")

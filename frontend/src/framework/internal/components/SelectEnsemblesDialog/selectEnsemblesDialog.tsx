@@ -15,6 +15,7 @@ import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelega
 
 import { LoadingOverlay } from "../LoadingOverlay";
 
+import { useResponsiveDialogHeightPercent } from "./_hooks";
 import {
     makeDeltaEnsembleSettingsFromEnsembleSet,
     makeHashFromDeltaEnsemble,
@@ -66,6 +67,7 @@ export const SelectEnsemblesDialog: React.FC<SelectEnsemblesDialogProps> = (prop
         PrivateWorkbenchSessionTopic.IS_ENSEMBLE_SET_LOADING,
     );
 
+    const dialogHeightPercent = useResponsiveDialogHeightPercent();
     const colorSet = useColorSet(props.workbench.getWorkbenchSession().getWorkbenchSettings());
     const currentHash = makeHashFromSelectedEnsembles(selectedRegularEnsembles, selectedDeltaEnsembles);
 
@@ -340,7 +342,10 @@ export const SelectEnsemblesDialog: React.FC<SelectEnsemblesDialogProps> = (prop
 
             return (
                 <div className="flex items-center space-x-1">
-                    <span className="text-slate-400">
+                    <span
+                        className="pl-2 text-slate-400 hover:bg-gray-100 hover:text-slate-500 rounded-md cursor-pointer"
+                        onClick={handleCloseEnsemblePicker}
+                    >
                         Selected Ensembles
                         <ChevronRight />
                     </span>
@@ -349,7 +354,7 @@ export const SelectEnsemblesDialog: React.FC<SelectEnsemblesDialogProps> = (prop
             );
         }
 
-        return <div>Selected Ensembles</div>;
+        return <div className="pl-2">Selected Ensembles</div>;
     }, [showEnsemblePicker, ensemblePickerMode]);
 
     const hasAnyChanges = hash !== currentHash;
@@ -363,7 +368,8 @@ export const SelectEnsemblesDialog: React.FC<SelectEnsemblesDialogProps> = (prop
                 showCloseCross
                 width={"75%"}
                 minWidth={800}
-                height={"75%"}
+                height={`${dialogHeightPercent}%`}
+                minHeight={600}
                 actions={
                     <div className="flex gap-4">
                         <Button onClick={handleClose} color="danger" disabled={isEnsembleSetLoading || !hasAnyChanges}>
@@ -403,6 +409,7 @@ export const SelectEnsemblesDialog: React.FC<SelectEnsemblesDialogProps> = (prop
                                     ? "Add Ensemble"
                                     : "Select Ensemble"
                             }
+                            onRequestClose={handleCloseEnsemblePicker}
                         />
                     ),
                 }}

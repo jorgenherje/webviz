@@ -1,22 +1,17 @@
 import React from "react";
 
 import { Add, Check } from "@mui/icons-material";
-import { useQuery } from "@tanstack/react-query";
 
-import { getFieldsOptions, type EnsembleInfo_api } from "@api";
+import { type EnsembleInfo_api } from "@api";
 import type { UserEnsembleSetting } from "@framework/internal/EnsembleSetLoader";
 import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { Button } from "@lib/components/Button";
-import { CircularProgress } from "@lib/components/CircularProgress";
-import { Dropdown } from "@lib/components/Dropdown";
 import { Label } from "@lib/components/Label";
-import { QueryStateWrapper } from "@lib/components/QueryStateWrapper";
 import { Select, type SelectOption } from "@lib/components/Select";
 import { useValidState } from "@lib/hooks/useValidState";
 
 import type { InternalRegularEnsembleSetting } from "../../types";
 
-import { readInitialStateFromLocalStorage, storeStateInLocalStorage } from "./_utils";
 import { CaseExplorer, type CaseSelection } from "./CaseExplorer";
 
 export type EnsemblePickerProps = {
@@ -24,22 +19,13 @@ export type EnsemblePickerProps = {
     selectedEnsembles: UserEnsembleSetting[];
     pickButtonLabel?: string;
     onPickEnsemble: (newEnsemble: InternalRegularEnsembleSetting) => void;
+    onRequestClose?: () => void;
 };
 
 export function EnsemblePicker(props: EnsemblePickerProps): React.ReactNode {
     const [selectedCaseName, setSelectedCaseName] = React.useState<string>("");
     const [selectedCaseUuid, setSelectedCaseUuid] = React.useState<string>("");
     const [selectedCaseEnsembles, setSelectedCaseEnsembles] = React.useState<EnsembleInfo_api[] | null>(null);
-
-    // --- Queries ---
-    const fieldsQuery = useQuery({ ...getFieldsOptions() });
-    const fieldOptions = fieldsQuery.data?.map((f) => ({ value: f.fieldIdentifier, label: f.fieldIdentifier })) ?? [];
-
-    const [selectedField, setSelectedField] = useValidState<string>({
-        initialState: readInitialStateFromLocalStorage("selectedField"),
-        validStates: fieldsQuery.data?.map((item) => item.fieldIdentifier) ?? [],
-        keepStateWhenInvalid: true,
-    });
 
     // --- Derived data ---
     const [selectedEnsembleName, setSelectedEnsembleName] = useValidState<string>({
@@ -71,11 +57,6 @@ export function EnsemblePicker(props: EnsemblePickerProps): React.ReactNode {
         selectedEnsembleName &&
         props.selectedEnsembles.some((el) => el.ensembleIdent.equals(selectedEnsembleIdent));
 
-    function handleFieldChanged(fieldIdentifier: string) {
-        storeStateInLocalStorage("selectedField", fieldIdentifier);
-        setSelectedField(fieldIdentifier);
-    }
-
     function handleRegularEnsembleChanged(ensembleNames: string[]) {
         setSelectedEnsembleName(ensembleNames[0]);
     }
@@ -99,24 +80,8 @@ export function EnsemblePicker(props: EnsemblePickerProps): React.ReactNode {
     }
 
     return (
-        <div className="flex flex-col h-full gap-4 p-4 bg-slate-100 ">
-            <Label text="Field">
-                <QueryStateWrapper
-                    queryResult={fieldsQuery}
-                    errorComponent={<div className="text-red-500">Error loading fields</div>}
-                    loadingComponent={<CircularProgress />}
-                >
-                    <Dropdown
-                        options={fieldOptions}
-                        value={selectedField}
-                        onChange={handleFieldChanged}
-                        disabled={fieldOptions.length === 0}
-                    />
-                </QueryStateWrapper>
-            </Label>
-            <Label text="Case" childrenWrapperClassName="grow min-h-0" wrapperClassName="flex flex-col grow min-h-0">
-                <CaseExplorer field={selectedField} onCaseSelectionChange={handleCaseSelectedChange} />
-            </Label>
+        <div className="flex flex-col h-full gap-4 p-4 bg-slate-100">
+            <CaseExplorer onCaseSelectionChange={handleCaseSelectedChange} />
             <Label text="Ensemble">
                 <Select
                     options={ensembleOptions}
@@ -127,7 +92,8 @@ export function EnsemblePicker(props: EnsemblePickerProps): React.ReactNode {
                     width="100%"
                 />
             </Label>
-            <div className="flex justify-end">
+            <div className="flex gap-4 justify-end">
+                <Button onClick={() => props.onRequestClose?.()}>Close</Button>
                 <Button
                     variant="contained"
                     onClick={handleSelectRegularEnsemble}

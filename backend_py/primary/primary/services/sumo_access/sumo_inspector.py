@@ -101,9 +101,9 @@ class SumoInspector:
                                 "size": 100,
                             }
                         },
-                        "iteration_names": {
+                        "ensemble_names": {
                             "terms": {
-                                "field": "fmu.iteration.name.keyword",
+                                "field": "fmu.ensemble.name.keyword",
                                 "size": 65535,
                             },
                             "aggs": {
@@ -137,7 +137,7 @@ class SumoInspector:
             user = get_single_bucket_key_as_str(case_bucket, "user")
             case_name = get_single_bucket_key_as_str(case_bucket, "name")
 
-            ensemble_buckets = case_bucket.get("iteration_names", {}).get("buckets", [])
+            ensemble_buckets = case_bucket.get("ensemble_names", {}).get("buckets", [])
 
             ensemble_info_arr: list[EnsembleInfo] = []
             for ensemble_bucket in ensemble_buckets:

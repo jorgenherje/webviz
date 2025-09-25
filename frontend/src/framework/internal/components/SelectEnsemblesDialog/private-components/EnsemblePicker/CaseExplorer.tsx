@@ -4,9 +4,10 @@ import { CircularProgress } from "@equinor/eds-core-react";
 import { useQuery } from "@tanstack/react-query";
 import { isEqual } from "lodash";
 
-import { getCasesOptions, type EnsembleInfo_api } from "@api";
+import { getCasesOptions, getFieldsOptions, type EnsembleInfo_api } from "@api";
 import { useAuthProvider } from "@framework/internal/providers/AuthProvider";
 import { tanstackDebugTimeOverride } from "@framework/internal/utils/debug";
+import { Dropdown } from "@lib/components/Dropdown";
 import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { QueryStateWrapper } from "@lib/components/QueryStateWrapper";
@@ -34,7 +35,6 @@ export type CaseSelection = {
 };
 
 export type CaseExplorerProps = {
-    field: string | null;
     onCaseSelectionChange: (caseSelection: CaseSelection) => void;
 };
 export function CaseExplorer(props: CaseExplorerProps): React.ReactNode {
@@ -60,9 +60,18 @@ export function CaseExplorer(props: CaseExplorerProps): React.ReactNode {
     const [prevCaseSelection, setPrevCaseSelection] = React.useState<CaseSelection | null>(null);
 
     // --- Queries ---
+    const fieldsQuery = useQuery({ ...getFieldsOptions() });
+    const fieldOptions = fieldsQuery.data?.map((f) => ({ value: f.fieldIdentifier, label: f.fieldIdentifier })) ?? [];
+
+    const [selectedField, setSelectedField] = useValidState<string>({
+        initialState: readInitialStateFromLocalStorage("selectedField"),
+        validStates: fieldsQuery.data?.map((item) => item.fieldIdentifier) ?? [],
+        keepStateWhenInvalid: true,
+    });
+
     const casesQuery = useQuery({
-        ...getCasesOptions({ query: { field_identifier: props.field ?? "" } }),
-        enabled: props.field !== null,
+        ...getCasesOptions({ query: { field_identifier: selectedField ?? "" } }),
+        enabled: selectedField !== null,
         gcTime: CACHE_TIME,
         staleTime: STALE_TIME,
     });
@@ -167,6 +176,11 @@ export function CaseExplorer(props: CaseExplorerProps): React.ReactNode {
     }
 
     // --- Handlers ---
+    function handleFieldChanged(fieldIdentifier: string) {
+        storeStateInLocalStorage("selectedField", fieldIdentifier);
+        setSelectedField(fieldIdentifier);
+    }
+
     function handleOfficialCasesSwitchChange(e: React.ChangeEvent<HTMLInputElement>) {
         const checked = e.target.checked;
         setShowOnlyOfficialCases(checked);
@@ -193,19 +207,46 @@ export function CaseExplorer(props: CaseExplorerProps): React.ReactNode {
     );
 
     return (
-        <div className="flex flex-col h-full gap-4">
-            <QueryStateWrapper
-                queryResult={casesQuery}
-                errorComponent={<div className="text-red-500">Error loading cases</div>}
-                loadingComponent={<CircularProgress />}
-            >
-                <TagPicker
-                    placeholder="Filter by Standard Results..."
-                    tags={casesStandardResults.map((elm) => ({ label: elm, value: elm }))}
-                    value={selectedStandardResults}
-                    onChange={(value) => setSelectedStandardResults([...value])}
-                />
-            </QueryStateWrapper>
+        <div className="flex flex-col h-full gap-4 min-h-0">
+            <div className="flex flex-row gap-4">
+                <Label text="Field" position="left">
+                    <QueryStateWrapper
+                        queryResult={fieldsQuery}
+                        errorComponent={<div className="text-red-500">Error loading fields</div>}
+                        loadingComponent={<CircularProgress />}
+                    >
+                        <Dropdown
+                            options={fieldOptions}
+                            value={selectedField}
+                            onChange={handleFieldChanged}
+                            disabled={fieldOptions.length === 0}
+                        />
+                    </QueryStateWrapper>
+                </Label>
+                <Label text="Case" position="left" wrapperClassName="grow">
+                    <div className="flex flex-row gap-4 items-center">
+                        <QueryStateWrapper
+                            queryResult={casesQuery}
+                            className="h-full flex-1 min-h-0"
+                            errorComponent={<div className="text-red-500">Error loading cases</div>}
+                            loadingComponent={<CircularProgress />}
+                        >
+                            <TagPicker
+                                placeholder="Filter by Standard Results..."
+                                tags={casesStandardResults.map((elm) => ({ label: elm, value: elm }))}
+                                value={selectedStandardResults}
+                                onChange={(value) => setSelectedStandardResults([...value])}
+                            />
+                        </QueryStateWrapper>
+                        <Label position="left" text="Official" title="Show only cases marked as official">
+                            <Switch checked={showOnlyOfficialCases} onChange={handleOfficialCasesSwitchChange} />
+                        </Label>
+                        <Label position="left" text="My cases" title="Show only my cases" labelClassName="grow">
+                            <Switch checked={showOnlyMyCases} onChange={handleCasesByMeChange} />
+                        </Label>
+                    </div>
+                </Label>
+            </div>
             <PendingWrapper
                 className="grow min-h-0"
                 isPending={false}
@@ -214,12 +255,6 @@ export function CaseExplorer(props: CaseExplorerProps): React.ReactNode {
                 <div className="flex flex-col h-full">
                     <div className="flex justify-end gap-4 items-center">
                         <span className="grow text-sm text-slate-500">Select from {numberOfCases} cases</span>
-                        <Label position="right" text="Official" title="Show only cases marked as official">
-                            <Switch checked={showOnlyOfficialCases} onChange={handleOfficialCasesSwitchChange} />
-                        </Label>
-                        <Label position="right" text="My cases" title="Show only my cases">
-                            <Switch checked={showOnlyMyCases} onChange={handleCasesByMeChange} />
-                        </Label>
                     </div>
                     <div className="grow min-h-0">
                         <Table
