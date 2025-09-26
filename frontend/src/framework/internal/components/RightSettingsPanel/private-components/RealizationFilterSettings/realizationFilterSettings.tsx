@@ -18,7 +18,6 @@ import { areParameterIdentStringToValueSelectionMapCandidatesEqual } from "@fram
 import type { Workbench } from "@framework/Workbench";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 
-
 export type RealizationFilterSettingsProps = { workbench: Workbench; onClose: () => void };
 
 export const RealizationFilterSettings: React.FC<RealizationFilterSettingsProps> = (props) => {
@@ -30,6 +29,10 @@ export const RealizationFilterSettings: React.FC<RealizationFilterSettingsProps>
     const [, setNumberOfUnsavedRealizationFilters] = useGuiState(
         guiMessageBroker,
         GuiState.NumberOfUnsavedRealizationFilters,
+    );
+    const [, setNumberOfActiveRealizationFilters] = useGuiState(
+        guiMessageBroker,
+        GuiState.NumberOfActiveRealizationFilters,
     );
 
     const [activeFilterEnsembleIdent, setActiveFilterEnsembleIdent] = React.useState<
@@ -225,6 +228,14 @@ export const RealizationFilterSettings: React.FC<RealizationFilterSettingsProps>
         const newHasUnsavedChangesMap = { ...ensembleIdentStringHasUnsavedChangesMap, [ensembleIdentString]: false };
         setEnsembleIdentStringHasUnsavedChangesMap(newHasUnsavedChangesMap);
         setNumberOfUnsavedRealizationFilters(countTrueValues(newHasUnsavedChangesMap));
+
+        // TMP: Detect if active filter results in filtered realizations
+        // - Loop over all realization filters and count how many have filtered realizations
+        const numActiveFilters = ensembleSet.getEnsembleArray().filter((ens) => {
+            const filter = realizationFilterSet.getRealizationFilterForEnsembleIdent(ens.getIdent());
+            return !isEqual(filter.getFilteredRealizations().toSorted(), ens.getRealizations().toSorted());
+        }).length;
+        setNumberOfActiveRealizationFilters(numActiveFilters);
 
         // Notify subscribers of change.
         props.workbench.getWorkbenchSession().notifyAboutEnsembleRealizationFilterChange();

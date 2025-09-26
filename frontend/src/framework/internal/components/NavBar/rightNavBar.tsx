@@ -22,6 +22,7 @@ export const RightNavBar: React.FC<RightNavBarProps> = (props) => {
         guiMessageBroker,
         GuiState.NumberOfUnsavedRealizationFilters,
     );
+    const [numberOfActiveRealizationFilters] = useGuiState(guiMessageBroker, GuiState.NumberOfActiveRealizationFilters);
     const [rightSettingsPanelWidth, setRightSettingsPanelWidth] = useGuiState(
         guiMessageBroker,
         GuiState.RightSettingsPanelWidthInPercent,
@@ -64,13 +65,19 @@ export const RightNavBar: React.FC<RightNavBarProps> = (props) => {
                 <NavBarButton
                     active={drawerContent === RightDrawerContent.RealizationFilterSettings}
                     title={`Open realization filter panel${
-                        numberOfUnsavedRealizationFilters === 0 ? "" : " (unsaved changes)"
+                        numberOfUnsavedRealizationFilters
+                            ? ` (unsaved changes)`
+                            : numberOfActiveRealizationFilters
+                              ? ` (active filters)`
+                              : ""
                     }`}
                     icon={
                         <Badge
-                            badgeContent="!"
-                            color="bg-orange-500"
-                            invisible={numberOfUnsavedRealizationFilters === 0}
+                            badgeContent={
+                                numberOfUnsavedRealizationFilters || numberOfActiveRealizationFilters || undefined
+                            }
+                            color={numberOfUnsavedRealizationFilters ? "bg-orange-500" : "bg-blue-500"}
+                            invisible={!numberOfUnsavedRealizationFilters && !numberOfActiveRealizationFilters}
                         >
                             <FilterAlt fontSize="small" className="size-5 mr-2" />
                         </Badge>

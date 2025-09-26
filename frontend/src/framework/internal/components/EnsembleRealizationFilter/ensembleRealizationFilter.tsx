@@ -1,6 +1,7 @@
 import React from "react";
 
-import { Check, Clear } from "@mui/icons-material";
+import { Check, Clear, FilterAlt } from "@mui/icons-material";
+import { isEqual } from "lodash";
 
 import type { EnsembleParameters } from "@framework/EnsembleParameters";
 import { RealizationFilter } from "@framework/RealizationFilter";
@@ -227,6 +228,10 @@ export const EnsembleRealizationFilter: React.FC<EnsembleRealizationFilterProps>
     };
     const mainDivStyleClasses = props.isActive ? activeStyleClasses : inactiveStyleClasses;
 
+    const areRealizationsFiltered = !isEqual(
+        props.selections.displayRealizationNumbers.toSorted(),
+        props.availableEnsembleRealizations.toSorted(),
+    );
     return (
         <div
             className={resolveClassNames("rounded-md", mainDivStyleClasses)}
@@ -247,8 +252,11 @@ export const EnsembleRealizationFilter: React.FC<EnsembleRealizationFilterProps>
                 >
                     {props.ensembleName}
                 </div>
+                <div className={resolveClassNames({ hidden: !areRealizationsFiltered || props.hasUnsavedSelections })}>
+                    <FilterAlt titleAccess="Filter applied" fontSize="small" className="size-5 mr-4" />
+                </div>
                 <div
-                    className={resolveClassNames("flex h-full items-center gap-1 pr-2 bg-amber-50", {
+                    className={resolveClassNames("flex h-full items-center gap-1 pr-2", {
                         hidden: !props.hasUnsavedSelections,
                     })}
                 >
