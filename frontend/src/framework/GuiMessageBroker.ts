@@ -30,7 +30,7 @@ export enum GuiState {
     RightSettingsPanelWidthInPercent = "rightSettingsPanelWidthInPercent",
     AppInitialized = "appInitialized",
     NumberOfUnsavedRealizationFilters = "numberOfUnsavedRealizationFilters",
-    NumberOfActiveRealizationFilters = "numberOfActiveRealizationFilters",
+    NumberOfEffectiveRealizationFilters = "numberOfEffectiveRealizationFilters",
 }
 
 export enum GuiEvent {
@@ -96,7 +96,7 @@ type GuiStateValueTypes = {
     [GuiState.RightSettingsPanelWidthInPercent]: number;
     [GuiState.AppInitialized]: boolean;
     [GuiState.NumberOfUnsavedRealizationFilters]: number;
-    [GuiState.NumberOfActiveRealizationFilters]: number;
+    [GuiState.NumberOfEffectiveRealizationFilters]: number;
 };
 
 const defaultStates: Map<GuiState, any> = new Map();
@@ -109,7 +109,7 @@ defaultStates.set(GuiState.DevToolsVisible, isDevMode());
 defaultStates.set(GuiState.RightSettingsPanelWidthInPercent, 0);
 defaultStates.set(GuiState.AppInitialized, false);
 defaultStates.set(GuiState.NumberOfUnsavedRealizationFilters, 0);
-defaultStates.set(GuiState.NumberOfActiveRealizationFilters, 0);
+defaultStates.set(GuiState.NumberOfEffectiveRealizationFilters, 0);
 
 const persistentStates: GuiState[] = [
     GuiState.LeftSettingsPanelWidthInPercent,
@@ -117,7 +117,7 @@ const persistentStates: GuiState[] = [
     GuiState.RightSettingsPanelWidthInPercent,
     GuiState.RightDrawerContent,
     GuiState.NumberOfUnsavedRealizationFilters,
-    GuiState.NumberOfActiveRealizationFilters,
+    GuiState.NumberOfEffectiveRealizationFilters,
 ];
 
 export class GuiMessageBroker {

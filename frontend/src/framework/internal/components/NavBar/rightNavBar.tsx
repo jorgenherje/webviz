@@ -22,7 +22,10 @@ export const RightNavBar: React.FC<RightNavBarProps> = (props) => {
         guiMessageBroker,
         GuiState.NumberOfUnsavedRealizationFilters,
     );
-    const [numberOfActiveRealizationFilters] = useGuiState(guiMessageBroker, GuiState.NumberOfActiveRealizationFilters);
+    const [numberOfEffectiveRealizationFilters] = useGuiState(
+        guiMessageBroker,
+        GuiState.NumberOfEffectiveRealizationFilters,
+    );
     const [rightSettingsPanelWidth, setRightSettingsPanelWidth] = useGuiState(
         guiMessageBroker,
         GuiState.RightSettingsPanelWidthInPercent,
@@ -67,17 +70,23 @@ export const RightNavBar: React.FC<RightNavBarProps> = (props) => {
                     title={`Open realization filter panel${
                         numberOfUnsavedRealizationFilters
                             ? `\n* ${numberOfUnsavedRealizationFilters} unsaved filter${numberOfUnsavedRealizationFilters > 1 ? "s" : ""}`
-                            : numberOfActiveRealizationFilters
-                              ? `\n* ${numberOfActiveRealizationFilters} active filter${numberOfActiveRealizationFilters > 1 ? "s" : ""}`
+                            : numberOfEffectiveRealizationFilters
+                              ? `\n* ${
+                                    numberOfEffectiveRealizationFilters === 1
+                                        ? `1 ensemble is`
+                                        : `${numberOfEffectiveRealizationFilters} ensembles are`
+                                } filtering out some realizations`
                               : ""
                     }`}
                     icon={
                         <Badge
                             badgeContent={
-                                numberOfUnsavedRealizationFilters ? "!" : numberOfActiveRealizationFilters || undefined
+                                numberOfUnsavedRealizationFilters
+                                    ? "!"
+                                    : numberOfEffectiveRealizationFilters || undefined
                             }
                             color={numberOfUnsavedRealizationFilters ? "bg-orange-500" : "bg-blue-500"}
-                            invisible={!numberOfUnsavedRealizationFilters && !numberOfActiveRealizationFilters}
+                            invisible={!numberOfUnsavedRealizationFilters && !numberOfEffectiveRealizationFilters}
                         >
                             <FilterAlt fontSize="small" className="size-5 mr-2" />
                         </Badge>

@@ -258,7 +258,11 @@ export const EnsembleRealizationFilter: React.FC<EnsembleRealizationFilterProps>
                         hidden: !areRealizationsFiltered || props.hasUnsavedSelections,
                     })}
                 >
-                    <FilterAlt titleAccess="Realizations excluded by filter" fontSize="small" className="size-5 mr-4" />
+                    <FilterAlt
+                        titleAccess="Some realizations are being filtered out"
+                        fontSize="small"
+                        className="size-5 mr-4"
+                    />
                 </div>
                 <div
                     className={resolveClassNames("flex h-full items-center gap-1 pr-2", {
