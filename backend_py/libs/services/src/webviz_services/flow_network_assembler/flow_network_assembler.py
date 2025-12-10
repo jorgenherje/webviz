@@ -157,9 +157,12 @@ class FlowNetworkAssembler:
         """Get group tree data from Sumo, and store it in a helper model class"""
         timer = PerfTimer()
 
-        group_tree_table_df = await self._group_tree_access.get_group_tree_table_for_realization_async(
+        group_tree_table_pa = await self._group_tree_access.get_group_tree_table_for_realization_async(
             realization=self._realization
         )
+
+        # TODO: REPLACE PANDAS WITH POLARS IF POSSIBLE
+        group_tree_table_df = group_tree_table_pa.to_pandas()
 
         # Store performance time for later logging
         self._performance_times.fetch_grouptree_df = timer.lap_ms()

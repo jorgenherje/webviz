@@ -68,12 +68,9 @@ class GroupTreeDataframeModel:
         self._terminal_node = terminal_node
         self._tree_type = tree_type
 
-        if self._tree_type == TreeType.GRUPTREE:
-            # Filter out BRANPROP entries
-            self._grouptree_df = self._grouptree_df[self._grouptree_df["KEYWORD"] != TreeType.BRANPROP.value]
-        elif self._tree_type == TreeType.BRANPROP:
-            # Filter out GRUPTREE entries
-            self._grouptree_df = self._grouptree_df[self._grouptree_df["KEYWORD"] != TreeType.GRUPTREE.value]
+        # Filter to include only dates where the selected tree type is defined
+        # and only include WELSPECS that belong to the selected tree type
+        self._grouptree_df = self._filter_by_tree_type(grouptree_dataframe, tree_type)
 
         group_tree_wells: set[str] = set()
         group_tree_groups: set[str] = set()
@@ -87,6 +84,51 @@ class GroupTreeDataframeModel:
 
         self._grouptree_wells = list(group_tree_wells)
         self._grouptree_groups = list(group_tree_groups)
+
+    @staticmethod
+    def _filter_by_tree_type(df: pd.DataFrame, tree_type: TreeType) -> pd.DataFrame:
+        """
+        Filter dataframe to include only dates where the selected tree type is defined,
+        and only include WELSPECS nodes that belong to the selected tree type.
+
+        A WELSPECS node belongs to a tree if its parent node exists in that tree's definition.
+        """
+        # Find dates where the selected tree type is defined
+        dates_with_tree_type = df[df["KEYWORD"] == tree_type.value]["DATE"].unique()
+
+        # Filter to only include rows from those dates
+        df_filtered_by_date = df[df["DATE"].isin(dates_with_tree_type)]
+
+        # For each date, get the set of parent nodes that exist in the selected tree type
+        # Group by date to process each date separately
+        filtered_rows = []
+
+        for date in dates_with_tree_type:
+            date_df = df_filtered_by_date[df_filtered_by_date["DATE"] == date]
+
+            # Get all nodes (CHILD values) that are defined in the selected tree type (not WELSPECS)
+            tree_nodes = set(date_df[date_df["KEYWORD"] == tree_type.value]["CHILD"].unique())
+
+            # Keep all rows that are:
+            # 1. The selected tree type itself (GRUPTREE or BRANPROP)
+            # 2. WELSPECS whose parent exists in the selected tree type
+            tree_type_rows = date_df[date_df["KEYWORD"] == tree_type.value]
+            welspecs_rows = date_df[
+                (date_df["KEYWORD"] == "WELSPECS") & (date_df["PARENT"].isin(tree_nodes))
+            ]
+
+            filtered_rows.append(pd.concat([tree_type_rows, welspecs_rows], ignore_index=True))
+
+        # Filter out the opposite tree type
+        if tree_type == TreeType.GRUPTREE:
+            opposite_tree_type = TreeType.BRANPROP
+        else:
+            opposite_tree_type = TreeType.GRUPTREE
+
+        result = pd.concat(filtered_rows, ignore_index=True)
+        result = result[result["KEYWORD"] != opposite_tree_type.value]
+
+        return result
 
     @staticmethod
     def expected_columns() -> set[str]:
