@@ -24,8 +24,8 @@ import { selectedNodeTypesAtom, selectedResamplingFrequencyAtom } from "./atoms/
 import {
     availableDateTimesAtom,
     availableRealizationsAtom,
+    availableTreeTypesAtom,
     edgeMetadataListAtom,
-    flowNetworkQueryResultAtom,
     nodeMetadataListAtom,
 } from "./atoms/derivedAtoms";
 import {
@@ -34,19 +34,23 @@ import {
     selectedEnsembleIdentAtom,
     selectedNodeKeyAtom,
     selectedRealizationAtom,
+    selectedTreeTypeAtom,
 } from "./atoms/persistableFixableAtoms";
+import { realizationFlowNetworkQueryAtom } from "./atoms/queryAtoms";
 
 export function Settings({ workbenchSession, settingsContext }: ModuleSettingsProps<Interfaces>) {
     const ensembleSet = useEnsembleSet(workbenchSession);
     const statusWriter = useSettingsStatusWriter(settingsContext);
 
     const availableRealizations = useAtomValue(availableRealizationsAtom);
+    const availableTreeTypes = useAtomValue(availableTreeTypesAtom);
     const availableDateTimes = useAtomValue(availableDateTimesAtom);
     const edgeMetadataList = useAtomValue(edgeMetadataListAtom);
     const nodeMetadataList = useAtomValue(nodeMetadataListAtom);
 
     const [selectedResamplingFrequency, setSelectedResamplingFrequency] = useAtom(selectedResamplingFrequencyAtom);
     const [selectedNodeTypes, setSelectedNodeTypes] = useAtom(selectedNodeTypesAtom);
+    const [selectedTreeType, setSelectedTreeType] = useAtom(selectedTreeTypeAtom);
 
     const [selectedEdgeKey, setSelectedEdgeKey] = useAtom(selectedEdgeKeyAtom);
     const [selectedNodeKey, setSelectedNodeKey] = useAtom(selectedNodeKeyAtom);
@@ -54,9 +58,9 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
     const [selectedRealization, setSelectedRealization] = useAtom(selectedRealizationAtom);
     const [selectedDateTime, setSelectedDateTime] = useAtom(selectedDateTimeAtom);
 
-    const FlowNetworkQueryResult = useAtomValue(flowNetworkQueryResultAtom);
+    const flowNetworkQuery = useAtomValue(realizationFlowNetworkQueryAtom);
 
-    usePropagateQueryErrorToStatusWriter(FlowNetworkQueryResult, statusWriter);
+    usePropagateQueryErrorToStatusWriter(flowNetworkQuery, statusWriter);
 
     const timeStepSliderDebounceTimeMs = 10;
     const timeStepSliderDebounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,6 +124,7 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
     const selectedDateTimeIndex = selectedDateTime.value ? availableDateTimes.indexOf(selectedDateTime.value) : -1;
 
     const selectedEnsembleIdentAnnotation = useMakePersistableFixableAtomAnnotations(selectedEnsembleIdentAtom);
+    const selectedTreeTypeAnnotation = useMakePersistableFixableAtomAnnotations(selectedTreeTypeAtom);
     const selectedRealizationAnnotation = useMakePersistableFixableAtomAnnotations(selectedRealizationAtom);
     const selectedEdgeKeyAnnotation = useMakePersistableFixableAtomAnnotations(selectedEdgeKeyAtom);
     const selectedNodeKeyAnnotation = useMakePersistableFixableAtomAnnotations(selectedNodeKeyAtom);
@@ -157,6 +162,17 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
                                 }
                                 value={selectedRealization.value?.toString() ?? undefined}
                                 onChange={handleRealizationNumberChange}
+                            />
+                        </SettingWrapper>
+                    </Label>
+                    <Label text="Tree Type">
+                        <SettingWrapper annotations={selectedTreeTypeAnnotation}>
+                            <Dropdown
+                                options={availableTreeTypes.map((type) => {
+                                    return { value: type, label: type };
+                                })}
+                                value={selectedTreeType.value}
+                                onChange={setSelectedTreeType}
                             />
                         </SettingWrapper>
                     </Label>

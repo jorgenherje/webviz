@@ -4,7 +4,7 @@ import pyarrow as pa
 from fmu.sumo.explorer.explorer import SearchContext, SumoClient
 
 from webviz_core_utils.perf_timer import PerfTimer
-from webviz_services.service_exceptions import InvalidDataError, Service
+from webviz_services.service_exceptions import InvalidDataError, ServiceLayerException, Service
 
 from ._arrow_table_loader import ArrowTableLoader
 from .sumo_client_factory import create_sumo_client
@@ -40,7 +40,11 @@ class GroupTreeAccess:
         table_loader = ArrowTableLoader(self._sumo_client, self._case_uuid, self._ensemble_name)
         table_loader.require_tagname(GroupTreeAccess.TAGNAME)
 
-        pa_table: pa.Table = await table_loader.get_single_realization_async(realization)
+        try:
+            pa_table: pa.Table = await table_loader.get_single_realization_async(realization)
+        except ServiceLayerException as e:
+            enhanced_message = f"Failed to load group tree table data for case '{self._case_uuid}', ensemble '{self._ensemble_name}', realization '{realization}': {e.message}"
+            raise type(e)(enhanced_message, e.service) from e
 
         _validate_group_tree_table(pa_table)
 
