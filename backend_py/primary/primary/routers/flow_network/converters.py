@@ -1,4 +1,4 @@
-from webviz_services.sumo_access.group_tree_types import TreeType
+from webviz_services.flow_network_assembler.flow_network_types import TreeType
 
 from . import schemas
 

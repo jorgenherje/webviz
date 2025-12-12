@@ -2,9 +2,9 @@ import logging
 import pandas as pd
 import numpy as np
 
-from webviz_services.sumo_access.group_tree_types import TreeType
+from webviz_services.flow_network_assembler.flow_network_types import TreeType
 
-from .flow_network_types import (
+from webviz_services.flow_network_assembler.flow_network_types import (
     CategorizedNodeSummaryVectors,
     NodeClassification,
     SummaryVectorInfo,
@@ -108,7 +108,7 @@ def compute_tree_type_vectors(tree_types: list[str], data_type: DataType) -> set
         return set()
 
     # Nested loop to create all possible combinations
-    return {f"{v_name}:{group}" for v_name in v_names for group in tree_types}
+    return {f"{v_name}:{tree_type}" for v_name in v_names for tree_type in tree_types}
 
 
 def compute_all_well_vectors(group_tree_wells: list[str]) -> set[str]:
@@ -121,24 +121,24 @@ def compute_all_well_vectors(group_tree_wells: list[str]) -> set[str]:
     return res
 
 
-def compute_all_group_vectors(group_tree_groups: list[str]) -> set[str]:
+def compute_all_tree_types_vectors(tree_types: list[str]) -> set[str]:
     grup_data_types = TREETYPE_DATATYPE_VECTORS_MAP[TreeType.GRUPTREE].keys()
     bran_data_types = TREETYPE_DATATYPE_VECTORS_MAP[TreeType.BRANPROP].keys()
     all_data_types = set(grup_data_types) | set(bran_data_types)
 
     res = set()
     for data_type in all_data_types:
-        res |= compute_tree_type_vectors(group_tree_groups, data_type)
+        res |= compute_tree_type_vectors(tree_types, data_type)
 
     return res
 
 
-def get_all_vectors_of_interest_for_tree(group_tree_wells: list[str], group_tree_groups: list[str]) -> set[str]:
+def get_all_vectors_of_interest_for_tree_types(group_tree_wells: list[str], tree_types: list[str]) -> set[str]:
     """
     Create a list of vectors based on the possible combinations of vector datatypes and vector nodes
-    for a group tree
+    for a list of tree types
 
-    This implies vectors for field, group and well.
+    This implies vectors for field, tree type and well.
 
     Only returns the candidates which exist among the valid vectors
     """
@@ -147,10 +147,10 @@ def get_all_vectors_of_interest_for_tree(group_tree_wells: list[str], group_tree
     field_vectors = set(FIELD_DATATYPE_VECTOR_MAP.values())
     # Find all summary vectors with group tree wells
     well_vectors = compute_all_well_vectors(group_tree_wells)
-    # Find all summary vectors with group tree groups
-    group_vectors = compute_all_group_vectors(group_tree_groups)
+    # Find all summary vectors with group tree tree types
+    tree_types_vectors = compute_all_tree_types_vectors(tree_types)
 
-    all_vectors = field_vectors | well_vectors | group_vectors
+    all_vectors = field_vectors | well_vectors | tree_types_vectors
 
     return all_vectors
 

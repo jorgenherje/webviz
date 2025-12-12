@@ -45,47 +45,28 @@ async def get_realization_flow_network(
     # Convert to NodeType enum in group_tree_types
     unique_node_types = {NodeType(elm.value) for elm in node_type_set}
 
-    tree_types = [schemas.TreeType.EXTENDED_NETWORK, schemas.TreeType.PRODUCTION_NETWORK]
-    # tree_types = [schemas.TreeType.EXTENDED_NETWORK]
-    # tree_types = [schemas.TreeType.PRODUCTION_NETWORK]
-    network_assemblers: list[FlowNetworkAssembler] = []
-    for tree_type in tree_types:
-        network_assembler = FlowNetworkAssembler(
-            group_tree_access=group_tree_access,
-            summary_access=summary_access,
-            realization=realization,
-            summary_frequency=summary_frequency,
-            selected_node_types=unique_node_types,
-            tree_type=converters.from_api_tree_type(tree_type),
-            flow_network_mode=NetworkModeOptions.SINGLE_REAL,
-        )
-        network_assemblers.append(network_assembler)
-
+    network_assembler = FlowNetworkAssembler(
+        group_tree_access=group_tree_access,
+        summary_access=summary_access,
+        realization=realization,
+        summary_frequency=summary_frequency,
+        selected_node_types=unique_node_types,
+        flow_network_mode=NetworkModeOptions.SINGLE_REAL,
+    )
     timer.lap_ms()
 
-    # Create async tasks to fetch both tree types in parallel
-    async with asyncio.TaskGroup() as tg:
-        for assembler in network_assemblers:
-            tg.create_task(assembler.fetch_and_initialize_async())
-
+    await network_assembler.fetch_and_initialize_async()
     initialize_time_ms = timer.lap_ms()
 
+    network_assembler_res = network_assembler.create_dated_networks_and_metadata_lists_per_tree_type()
+    create_data_time_ms = timer.lap_ms()
+
     resulting_map: dict[str, schemas.FlowNetworkData] = {}
-
-    # Handle the initialized assemblers
-    for i, assembler in enumerate(network_assemblers):
-        tree_type = tree_types[i]
-        (
-            dated_networks,
-            edge_metadata,
-            node_metadata,
-        ) = assembler.create_dated_networks_and_metadata_lists()
-
+    for tree_type, flow_network_data in network_assembler_res.items():
+        dated_networks, edge_metadata, node_metadata = flow_network_data
         resulting_map[tree_type.value] = schemas.FlowNetworkData(
             edgeMetadataList=edge_metadata, nodeMetadataList=node_metadata, datedNetworks=dated_networks
         )
-
-    create_data_time_ms = timer.lap_ms()
 
     LOGGER.info(
         f"Group tree data for single realization fetched and processed in: {timer.elapsed_ms()}ms "

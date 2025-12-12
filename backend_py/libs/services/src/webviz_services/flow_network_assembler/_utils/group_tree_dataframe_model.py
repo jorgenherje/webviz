@@ -1,9 +1,9 @@
-from typing import List, Optional
-
 import polars as pl
+import pyarrow as pa
 
-from webviz_services.sumo_access.group_tree_types import TreeType
 from webviz_services.service_exceptions import InvalidDataError, MultipleDataMatchesError, NoDataError, Service
+
+from webviz_services.flow_network_assembler.flow_network_types import TreeType
 
 
 class GroupTreeDataframeModel:
@@ -26,17 +26,19 @@ class GroupTreeDataframeModel:
     """
 
     _grouptree_df: pl.DataFrame
-    _terminal_node: Optional[str]
-    _tree_type: TreeType
+    _grouptree_wells: list[str] = []
+    _grouptree_tree_types: list[TreeType] = []
 
-    _grouptree_wells: List[str] = []
-    _grouptree_tree_types: List[str] = []
+    _terminal_node: str | None = None
+    _excl_well_startswith: list[str] | None = None
+    _excl_well_endswith: list[str] | None = None
 
     def __init__(
         self,
-        grouptree_df: pl.DataFrame,
-        tree_type: TreeType,
-        terminal_node: Optional[str] = None,
+        group_tree_table_pa: pa.Table,
+        terminal_node: str | None = None,
+        excl_well_startswith: list[str] | None = None,
+        excl_well_endswith: list[str] | None = None,
     ):
         """
         Initialize the group tree model with group tree dataframe and tree type
@@ -48,11 +50,11 @@ class GroupTreeDataframeModel:
         * KEYWORD (GRUPTREE, BRANPROP or WELSPECS)
         """
 
+        # Convert PyArrow to Polars DataFrame
+        grouptree_df = pl.DataFrame(group_tree_table_pa)
+
         # Validate expected columns - verify existence and data types
         GroupTreeDataframeModel.validate_expected_columns(grouptree_df)
-
-        if tree_type.value not in grouptree_df["KEYWORD"].unique().to_list():
-            raise NoDataError(f"Tree type: {tree_type} not found in grouptree dataframe.", service=Service.GENERAL)
 
         # Note: Only support single realization for now
         if "REAL" in grouptree_df.columns:
@@ -61,31 +63,62 @@ class GroupTreeDataframeModel:
             )
 
         self._terminal_node = terminal_node
-        self._tree_type = tree_type
-
-        # Filter to include only dates where the selected tree type is defined
-        # and only include WELSPECS that belong to the selected tree type
-        self._grouptree_df = self._filter_by_tree_type(grouptree_df, tree_type)
+        self._excl_well_startswith = excl_well_startswith
+        self._excl_well_endswith = excl_well_endswith
 
         # Extract wells and groups with expressions
         wells_expr = pl.col("KEYWORD") == "WELSPECS"
         tree_type_expr = pl.col("KEYWORD").is_in(["GRUPTREE", "BRANPROP"])
-        self._grouptree_wells = self._grouptree_df.filter(wells_expr)["CHILD"].unique().to_list()
-        self._grouptree_tree_types = self._grouptree_df.filter(tree_type_expr)["CHILD"].unique().to_list()
+        self._grouptree_wells = grouptree_df.filter(wells_expr)["CHILD"].unique().to_list()
+        tree_type_strings = grouptree_df.filter(tree_type_expr)["CHILD"].unique().to_list()
 
-    @staticmethod
-    def _filter_by_tree_type(df: pl.DataFrame, tree_type: TreeType) -> pl.DataFrame:
+        # Convert to TreeType enums
+        self._grouptree_tree_types = []
+        for tree_type_str in tree_type_strings:
+            tree_type = TreeType.from_string_value(tree_type_str)
+            if tree_type is None:
+                raise InvalidDataError(
+                    f"Invalid tree type '{tree_type_str}' found in group tree dataframe.",
+                    service=Service.GENERAL,
+                )
+
+            self._grouptree_tree_types.append(tree_type)
+
+        # Filter dataframe
+        self._grouptree_df = GroupTreeDataframeModel._create_filtered_dataframe(
+            grouptree_df,
+            terminal_node=self._terminal_node,
+            excl_well_startswith=self._excl_well_startswith,
+            excl_well_endswith=self._excl_well_endswith,
+        )
+
+    @property
+    def dataframe(self) -> pl.DataFrame:
+        """
+        Get the full filtered group tree dataframe
+        """
+        return self._grouptree_df
+
+    def create_df_for_tree_type(self, tree_type: TreeType) -> pl.DataFrame:
         """
         Filter dataframe to include only dates where the selected tree type is defined,
         and only include WELSPECS nodes that belong to the selected tree type.
 
         A WELSPECS node belongs to a tree if its parent node exists in that tree's definition.
         """
+        if tree_type not in self._grouptree_tree_types:
+            raise NoDataError(
+                f"Tree type '{tree_type}' not found in the group tree dataframe.",
+                Service.GENERAL,
+            )
+
         # Find dates where the selected tree type is defined
-        dates_for_tree_type = df.filter(pl.col("KEYWORD") == tree_type.value).select("DATE").unique()["DATE"]
+        dates_for_tree_type = (
+            self._grouptree_df.filter(pl.col("KEYWORD") == tree_type.value).select("DATE").unique()["DATE"]
+        )
 
         # Filter to only include rows from those dates
-        df = df.filter(pl.col("DATE").is_in(dates_for_tree_type))
+        df = self._grouptree_df.filter(pl.col("DATE").is_in(dates_for_tree_type))
 
         # Get all nodes that are defined in the selected tree type (across all dates)
         tree_nodes = df.filter(pl.col("KEYWORD") == tree_type.value).select("CHILD").unique()["CHILD"]
@@ -140,42 +173,28 @@ class GroupTreeDataframeModel:
         return {"DATE", "CHILD", "KEYWORD", "PARENT"}
 
     @property
-    def dataframe(self) -> pl.DataFrame:
-        """Returns a dataframe that will have the following columns:
-        * DATE
-        * CHILD (node in tree)
-        * PARENT (node in tree)
-        * KEYWORD (GRUPTREE, WELSPECS or BRANPROP)
-        * REAL
-
-        If gruptrees are exactly equal in all realizations then only one tree is
-        stored in the dataframe. That means the REAL column will only have one unique value.
-        If not, all trees are stored.
-        """
-        return self._grouptree_df
-
-    @property
-    def group_tree_wells(self) -> List[str]:
+    def group_tree_wells(self) -> list[str]:
         """
         List of all wells in the group tree dataframe
         """
         return self._grouptree_wells
 
     @property
-    def group_tree_tree_types(self) -> List[str]:
+    def tree_types(self) -> list[TreeType]:
         """
-        List of all group tree types in the group tree dataframe
+        List of all tree types in the group tree dataframe
         """
         return self._grouptree_tree_types
 
-    def create_filtered_dataframe(
-        self,
-        terminal_node: Optional[str] = None,
-        excl_well_startswith: Optional[List[str]] = None,
-        excl_well_endswith: Optional[List[str]] = None,
+    @staticmethod
+    def _create_filtered_dataframe(
+        grouptree_df: pl.DataFrame,
+        terminal_node: str | None = None,
+        excl_well_startswith: list[str] | None = None,
+        excl_well_endswith: list[str] | None = None,
     ) -> pl.DataFrame:
-        """This function returns a sub-set of the rows in the gruptree dataframe
-        filtered according to the input arguments:
+        """This function returns a sub-set of the rows in the grouptree dataframe
+        filtered according to the input arguments
 
         - terminal_node: returns the terminal node and all nodes below it in the
         tree (for all realizations and dates)
@@ -185,54 +204,54 @@ class GroupTreeDataframeModel:
         of the entries in the list.
 
         """
-        df = self._grouptree_df
 
         # Build mask for rows - default all rows
-        num_rows = df.height
+        num_rows = grouptree_df.height
         mask = pl.Series([True] * num_rows)
 
         # Filter by terminal node (branch extraction)
         if terminal_node is not None:
-            if terminal_node not in df["CHILD"].unique().to_list():
+            if terminal_node not in grouptree_df["CHILD"].unique().to_list():
                 raise NoDataError(
                     f"Terminal node '{terminal_node}' not found in 'CHILD' column of the gruptree data.",
                     Service.GENERAL,
                 )
             if terminal_node != "FIELD":
-                branch_nodes = self._create_branch_node_list(terminal_node)
-                branch_mask = df["CHILD"].is_in(branch_nodes)
+                branch_nodes = GroupTreeDataframeModel._create_branch_node_list(grouptree_df, terminal_node)
+                branch_mask = grouptree_df["CHILD"].is_in(branch_nodes)
                 mask = mask & branch_mask
 
         # Filter out wells by prefix
         if excl_well_startswith is not None:
-            welspecs_mask = df["KEYWORD"] == "WELSPECS"
+            welspecs_mask = grouptree_df["KEYWORD"] == "WELSPECS"
             # Build exclude mask for any prefix match
             exclude_mask = pl.Series([False] * num_rows)
             for prefix in excl_well_startswith:
-                exclude_mask = exclude_mask | df["CHILD"].str.starts_with(prefix)
+                exclude_mask = exclude_mask | grouptree_df["CHILD"].str.starts_with(prefix)
             # Only exclude WELSPECS rows that match the prefixes
             mask = mask & ~(welspecs_mask & exclude_mask)
 
         # Filter out wells by suffix
         if excl_well_endswith is not None:
-            welspecs_mask = df["KEYWORD"] == "WELSPECS"
+            welspecs_mask = grouptree_df["KEYWORD"] == "WELSPECS"
             # Build exclude mask for any suffix match
             exclude_mask = pl.Series([False] * num_rows)
             for suffix in excl_well_endswith:
-                exclude_mask = exclude_mask | df["CHILD"].str.ends_with(suffix)
+                exclude_mask = exclude_mask | grouptree_df["CHILD"].str.ends_with(suffix)
             # Only exclude WELSPECS rows that match the suffixes
             mask = mask & ~(welspecs_mask & exclude_mask)
 
-        return df.filter(mask)
+        return grouptree_df.filter(mask)
 
-    def _create_branch_node_list(self, terminal_node: str) -> List[str]:
+    @staticmethod
+    def _create_branch_node_list(dataframe: pl.DataFrame, terminal_node: str) -> list[str]:
         """
         This function lists all nodes in a branch of the group tree starting from the terminal node.
         """
         branch_node_set = {terminal_node}
 
-        nodes_array = self._grouptree_df["CHILD"].to_numpy()
-        parents_array = self._grouptree_df["PARENT"].to_numpy()
+        nodes_array = dataframe["CHILD"].to_numpy()
+        parents_array = dataframe["PARENT"].to_numpy()
 
         if terminal_node not in parents_array:
             return list(branch_node_set)
