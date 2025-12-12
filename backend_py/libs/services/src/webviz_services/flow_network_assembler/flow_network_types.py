@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import BaseModel
 
 
@@ -16,7 +16,7 @@ class TreeType(StrEnum):
     BRANPROP = "BRANPROP"
 
     @classmethod
-    def from_string_value(cls, value: str) -> "TreeType" | None:
+    def from_string_value(cls, value: str) -> Optional["TreeType"]:
         """
         Convert string value to TreeType enum, or None if invalid
         """

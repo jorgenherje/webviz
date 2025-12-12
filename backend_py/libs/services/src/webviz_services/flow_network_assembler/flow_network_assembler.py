@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from typing import Tuple, Literal
+from typing import Literal
 from dataclasses import dataclass
 
 import numpy as np
@@ -313,8 +313,8 @@ class FlowNetworkAssembler:
 
             dataframe = self._group_tree_df_model.create_df_for_tree_type(tree_type)
             dated_network_list = _create_dated_networks(
-                self._smry_table_sorted_by_date,
                 dataframe,
+                self._smry_table_sorted_by_date,
                 self._node_static_working_data,
                 self._selected_node_types,
                 self._network_classification.TERMINAL_NODE,
@@ -460,7 +460,7 @@ class FlowNetworkAssembler:
             )
 
         # Expect each node to have working data
-        node_names_set = set(filtered_group_tree_df["CHILD"].unique().tolist())
+        node_names_set = set(filtered_group_tree_df["CHILD"].unique().to_list())
         if set(node_static_working_data.keys()) != node_names_set:
             missing_node_working_data = node_names_set - set(node_static_working_data.keys())
             raise ValueError(f"Missing static working data for nodes: {missing_node_working_data}")
@@ -776,10 +776,13 @@ def _create_dated_networks(
 
     total_loop_time_ms_start = timer.elapsed_ms()
 
-    for date, grouptree_at_date in grouptree_per_date:
+    for group_by_tuple, grouptree_at_date in grouptree_per_date:
+        # Polars returns a tuple with one element per group by column
+        date = group_by_tuple[0]
+
         timer.lap_ms()
         # Find next date greater than current date
-        next_date = grouptree_dates.filter(pl.col("DATE") > date).min()
+        next_date = grouptree_dates.filter(grouptree_dates > date).min()
         if next_date is None:
             # Pick last smry date from sorted date column
             next_date = smry_sorted_by_date["DATE"][-1]

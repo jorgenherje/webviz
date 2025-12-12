@@ -70,7 +70,7 @@ class GroupTreeDataframeModel:
         wells_expr = pl.col("KEYWORD") == "WELSPECS"
         tree_type_expr = pl.col("KEYWORD").is_in(["GRUPTREE", "BRANPROP"])
         self._grouptree_wells = grouptree_df.filter(wells_expr)["CHILD"].unique().to_list()
-        tree_type_strings = grouptree_df.filter(tree_type_expr)["CHILD"].unique().to_list()
+        tree_type_strings = grouptree_df.filter(tree_type_expr)["KEYWORD"].unique().to_list()
 
         # Convert to TreeType enums
         self._grouptree_tree_types = []
