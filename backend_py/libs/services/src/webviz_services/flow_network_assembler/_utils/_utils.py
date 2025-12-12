@@ -33,7 +33,7 @@ FIELD_DATATYPE_VECTOR_MAP = {
     DataType.GASINJRATE: "FGIR",
     DataType.PRESSURE: "GPR",
 }
-GROUPTYPE_DATATYPE_VECTORS_MAP = {
+TREETYPE_DATATYPE_VECTORS_MAP = {
     TreeType.GRUPTREE: {
         DataType.OILRATE: "GOPR",
         DataType.GASRATE: "GGPR",
@@ -78,7 +78,11 @@ DATATYPE_LABEL_MAP = {
 
 
 def compute_tree_well_vectors(group_tree_wells: list[str], data_type: DataType) -> set[str]:
-    """Given a vector type (WSTAT, WOPT, etc), returns a list of full summary vector names for each well in a group tree model; e.g. "WSTAT:A1", "WSTAT:A2", etc. Returns an empty array (and logs a warning) if the datatype has no vector"""
+    """
+    Given a vector type (WSTAT, WOPT, etc), returns a list of full summary vector names for each well in a group tree model; e.g. "WSTAT:A1", "WSTAT:A2", etc.
+
+    Returns an empty array (and logs a warning) if the datatype has no vector
+    """
 
     vector_name = WELL_DATATYPE_VECTOR_MAP.get(data_type)
 
@@ -89,21 +93,22 @@ def compute_tree_well_vectors(group_tree_wells: list[str], data_type: DataType) 
     return {f"{vector_name}:{well}" for well in group_tree_wells}
 
 
-def compute_tree_group_vectors(group_tree_groups: list[str], data_type: DataType) -> set[str]:
-    """Given a vector type (GOPR, GGIR, etc), returns a list of full summary vector names for each group in a group tree model. Returns an empty array (and logs a warning) if the datatype has no vector"""
-    grup_tree_vectors = GROUPTYPE_DATATYPE_VECTORS_MAP[TreeType.GRUPTREE]
-    bran_prop_vectors = GROUPTYPE_DATATYPE_VECTORS_MAP[TreeType.BRANPROP]
+def compute_tree_type_vectors(tree_types: list[str], data_type: DataType) -> set[str]:
+    """Given a vector type (GOPR, GGIR, etc), returns a list of full summary vector names for each tree type in a group tree model.
+    Returns an empty array (and logs a warning) if the datatype has no vector"""
+    grup_tree_vectors = TREETYPE_DATATYPE_VECTORS_MAP[TreeType.GRUPTREE]
+    bran_prop_vectors = TREETYPE_DATATYPE_VECTORS_MAP[TreeType.BRANPROP]
 
     v_name_grup = grup_tree_vectors.get(data_type)
     v_name_bran = bran_prop_vectors.get(data_type)
     v_names = [v for v in (v_name_grup, v_name_bran) if v is not None]
 
     if len(v_names) == 0:
-        LOGGER.warning("No recognized group vectors for type %s", data_type)
+        LOGGER.warning("No recognized vectors for type %s", data_type)
         return set()
 
     # Nested loop to create all possible combinations
-    return {f"{v_name}:{group}" for v_name in v_names for group in group_tree_groups}
+    return {f"{v_name}:{group}" for v_name in v_names for group in tree_types}
 
 
 def compute_all_well_vectors(group_tree_wells: list[str]) -> set[str]:
@@ -117,13 +122,13 @@ def compute_all_well_vectors(group_tree_wells: list[str]) -> set[str]:
 
 
 def compute_all_group_vectors(group_tree_groups: list[str]) -> set[str]:
-    grup_data_types = GROUPTYPE_DATATYPE_VECTORS_MAP[TreeType.GRUPTREE].keys()
-    bran_data_types = GROUPTYPE_DATATYPE_VECTORS_MAP[TreeType.BRANPROP].keys()
+    grup_data_types = TREETYPE_DATATYPE_VECTORS_MAP[TreeType.GRUPTREE].keys()
+    bran_data_types = TREETYPE_DATATYPE_VECTORS_MAP[TreeType.BRANPROP].keys()
     all_data_types = set(grup_data_types) | set(bran_data_types)
 
     res = set()
     for data_type in all_data_types:
-        res |= compute_tree_group_vectors(group_tree_groups, data_type)
+        res |= compute_tree_type_vectors(group_tree_groups, data_type)
 
     return res
 
@@ -170,7 +175,7 @@ def create_sumvec_from_datatype_node_name_and_keyword(
         if keyword == "WELSPECS":
             datatype_ecl = WELL_DATATYPE_VECTOR_MAP[datatype]
         elif keyword in [t.value for t in TreeType]:
-            datatype_ecl = GROUPTYPE_DATATYPE_VECTORS_MAP[TreeType[keyword]][datatype]
+            datatype_ecl = TREETYPE_DATATYPE_VECTORS_MAP[TreeType[keyword]][datatype]
     except KeyError as exc:
         error = (
             f"Summary vector not found for eclipse keyword: {keyword}, "

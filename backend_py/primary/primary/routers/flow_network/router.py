@@ -45,9 +45,9 @@ async def get_realization_flow_network(
     # Convert to NodeType enum in group_tree_types
     unique_node_types = {NodeType(elm.value) for elm in node_type_set}
 
-    # tree_types = [schemas.TreeType.GRUPTREE, schemas.TreeType.BRANPROP]
-    # tree_types = [schemas.TreeType.GRUPTREE]
-    tree_types = [schemas.TreeType.BRANPROP]
+    tree_types = [schemas.TreeType.EXTENDED_NETWORK, schemas.TreeType.PRODUCTION_NETWORK]
+    # tree_types = [schemas.TreeType.EXTENDED_NETWORK]
+    # tree_types = [schemas.TreeType.PRODUCTION_NETWORK]
     network_assemblers: list[FlowNetworkAssembler] = []
     for tree_type in tree_types:
         network_assembler = FlowNetworkAssembler(

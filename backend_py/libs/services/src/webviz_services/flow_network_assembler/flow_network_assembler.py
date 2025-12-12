@@ -1,23 +1,24 @@
 import logging
 import asyncio
-from typing import Optional, Tuple, Literal
+from typing import Tuple, Literal
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+import polars as pl
 import pyarrow as pa
 import pyarrow.compute as pc
 
 from webviz_core_utils.perf_timer import PerfTimer
 
-from webviz_services.service_exceptions import InvalidDataError, NoDataError, Service
+from webviz_services.service_exceptions import NoDataError, Service
 from webviz_services.sumo_access.summary_access import Frequency, SummaryAccess, VectorMetadata
 from webviz_services.sumo_access.group_tree_access import GroupTreeAccess
 from webviz_services.sumo_access.group_tree_types import TreeType
 
-from . import _utils
-from ._assembler_performance_times import PerformanceTimes
-from ._group_tree_dataframe_model import (
+from ._utils import _utils
+from ._utils.assembler_performance_times import PerformanceTimes
+from ._utils.group_tree_dataframe_model import (
     GroupTreeDataframeModel,
 )
 
@@ -74,8 +75,8 @@ class FlowNetworkAssembler:
         flow_network_mode: NetworkModeOptions,
         terminal_node: str = "FIELD",
         tree_type: TreeType = TreeType.GRUPTREE,
-        excl_well_startswith: Optional[list[str]] = None,
-        excl_well_endswith: Optional[list[str]] = None,
+        excl_well_startswith: list[str] | None = None,
+        excl_well_endswith: list[str] | None = None,
     ):
         # NOTE: Temporary only supporting single real
         if flow_network_mode != NetworkModeOptions.SINGLE_REAL:
@@ -90,9 +91,9 @@ class FlowNetworkAssembler:
         self._excl_well_endswith = excl_well_endswith
         self._summary_resampling_frequency = summary_frequency
         self._selected_node_types = selected_node_types
-        self._group_tree_df_model: Optional[GroupTreeDataframeModel] = None
-        self._filtered_group_tree_df: Optional[pd.DataFrame] = None
-        self._all_vectors: Optional[set[str]] = None
+        self._group_tree_df_model: GroupTreeDataframeModel | None = None
+        self._filtered_group_tree_df: pd.DataFrame | None = None
+        self._all_vectors: set[str] | None = None
         self._vector_metadata_by_keyword: dict[str, list[VectorMetadata]] = {}
         self._smry_table_sorted_by_date: pa.Table | None = None
         self._node_static_working_data: dict[str, StaticNodeWorkingData] | None = None
@@ -161,8 +162,8 @@ class FlowNetworkAssembler:
             realization=self._realization
         )
 
-        # TODO: REPLACE PANDAS WITH POLARS IF POSSIBLE
-        group_tree_table_df = group_tree_table_pa.to_pandas()
+        # Convert PyArrow to Polars DataFrame
+        group_tree_table_df = pl.DataFrame(group_tree_table_pa)
 
         # Store performance time for later logging
         self._performance_times.fetch_grouptree_df = timer.lap_ms()
@@ -170,24 +171,19 @@ class FlowNetworkAssembler:
         if group_tree_table_df is None:
             raise NoDataError("Group tree data not found", Service.GENERAL)
 
-        if not GroupTreeDataframeModel.has_expected_columns(group_tree_table_df):
-            raise InvalidDataError(
-                f"Expected columns: {GroupTreeDataframeModel.expected_columns()} not found in the grouptree dataframe. "
-                f"Columns found: {group_tree_table_df.columns}",
-                Service.GENERAL,
-            )
-
         self._group_tree_df_model = GroupTreeDataframeModel(group_tree_table_df, self._tree_type)
 
         # Store performance time for later logging
         self._performance_times.init_grouptree_df_model = timer.lap_ms()
 
-        # Create filtered group tree df from model
-        self._filtered_group_tree_df = self._group_tree_df_model.create_filtered_dataframe(
+        # Create filtered group tree df from model and convert to pandas for compatibility with existing code
+        filtered_group_tree_pl_df = self._group_tree_df_model.create_filtered_dataframe(
             terminal_node=self._network_classification.TERMINAL_NODE,
             excl_well_startswith=self._excl_well_startswith,
             excl_well_endswith=self._excl_well_endswith,
         )
+        # Convert back to pandas for the rest of the assembler (which still uses pandas)
+        self._filtered_group_tree_df = filtered_group_tree_pl_df.to_pandas()
 
         # Store performance time for later logging
         self._performance_times.create_filtered_dataframe = timer.lap_ms()
@@ -230,7 +226,7 @@ class FlowNetworkAssembler:
         self._verify_that_sumvecs_exists(tree_wstat_vectors)
 
         vectors_of_interest = _utils.get_all_vectors_of_interest_for_tree(
-            group_tree_df_model.group_tree_wells, group_tree_df_model.group_tree_groups
+            group_tree_df_model.group_tree_wells, group_tree_df_model.group_tree_tree_types
         )
         vectors_of_interest = vectors_of_interest & available_vectors
 

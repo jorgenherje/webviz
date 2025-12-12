@@ -152,30 +152,17 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
             </CollapsibleGroup>
             <CollapsibleGroup expanded={true} title="Data Fetching Options">
                 <div className="flex flex-col gap-2">
-                    <Label text="Realization Number">
-                        <SettingWrapper annotations={selectedRealizationAnnotation}>
-                            <Dropdown
-                                options={
-                                    availableRealizations?.map((real) => {
-                                        return { value: real.toString(), label: real.toString() };
-                                    }) ?? []
-                                }
-                                value={selectedRealization.value?.toString() ?? undefined}
-                                onChange={handleRealizationNumberChange}
-                            />
-                        </SettingWrapper>
-                    </Label>
-                    <Label text="Tree Type">
-                        <SettingWrapper annotations={selectedTreeTypeAnnotation}>
-                            <Dropdown
-                                options={availableTreeTypes.map((type) => {
-                                    return { value: type, label: type };
-                                })}
-                                value={selectedTreeType.value}
-                                onChange={setSelectedTreeType}
-                            />
-                        </SettingWrapper>
-                    </Label>
+                    <SettingWrapper label="Realization Number" annotations={selectedRealizationAnnotation}>
+                        <Dropdown
+                            options={
+                                availableRealizations?.map((real) => {
+                                    return { value: real.toString(), label: real.toString() };
+                                }) ?? []
+                            }
+                            value={selectedRealization.value?.toString() ?? undefined}
+                            onChange={handleRealizationNumberChange}
+                        />
+                    </SettingWrapper>
                     <Label text="Node Types">
                         <Select
                             options={Object.values(NodeType_api).map((val: NodeType_api) => {
@@ -191,12 +178,26 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
             </CollapsibleGroup>
             <CollapsibleGroup
                 expanded={true}
-                title="Edge, node and date selections"
+                title="Network selections"
                 hasError={
                     selectedDateTime.depsHaveError || selectedEdgeKey.depsHaveError || selectedNodeKey.depsHaveError
                 }
             >
                 <div className="flex flex-col gap-2">
+                    <SettingWrapper
+                        label="Tree Type"
+                        loadingOverlay={selectedTreeType.isLoading}
+                        errorOverlay={selectedTreeType.depsHaveError ? "Could not load tree types." : undefined}
+                        annotations={selectedTreeTypeAnnotation}
+                    >
+                        <Dropdown
+                            options={availableTreeTypes.map((type) => {
+                                return { value: type, label: type };
+                            })}
+                            value={selectedTreeType.value}
+                            onChange={setSelectedTreeType}
+                        />
+                    </SettingWrapper>
                     <SettingWrapper
                         label="Edge options"
                         annotations={selectedEdgeKeyAnnotation}

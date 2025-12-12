@@ -22,9 +22,8 @@ class StatOption(StrEnum):
 
 
 class TreeType(StrEnum):
-    # TODO: Consider more descriptive names here for front-end use, i.e. not as technical
-    GRUPTREE = "GRUPTREE"
-    BRANPROP = "BRANPROP"
+    EXTENDED_NETWORK = "EXTENDED_NETWORK"
+    PRODUCTION_NETWORK = "PRODUCTION_NETWORK"
 
 
 # ! Copy of the flow network service NodeType enum
