@@ -67,6 +67,10 @@ class ParameterAccess:
         parameter_table = await parameter_agg.to_arrow_async()
         perf_metrics.record_lap("to_arrow")
 
+        # Validate parameter table
+        _validate_parameter_table(parameter_table)
+        perf_metrics.record_lap("validate arrow table")
+
         ensemble_parameters = parameter_table_to_ensemble_parameters(parameter_table)
         sensitivities = create_ensemble_sensitivities(ensemble_parameters)
         perf_metrics.record_lap("transform")
@@ -137,7 +141,6 @@ def create_ensemble_sensitivity_cases(
 
 def parameter_table_to_ensemble_parameters(parameter_table: pa.Table) -> list[EnsembleParameter]:
     """Convert a parameter table to EnsembleParameters"""
-    _validate_parameter_table(parameter_table)
     parameter_table = _cast_datetime_columns_to_string(parameter_table)
 
     parameter_str_arr = [param_str for param_str in parameter_table.column_names if param_str != "REAL"]
@@ -157,6 +160,22 @@ def _validate_parameter_table(parameter_table: pa.Table) -> None:
     if "REAL" not in parameter_table.column_names:
         raise InvalidDataError(
             "Parameter table does not contain a 'REAL' column, which is required to identify realizations.",
+            Service.SUMO,
+        )
+
+    # Check for null/NaN values in all columns
+    columns_with_nulls = []
+    for column_name in parameter_table.column_names:
+        column = parameter_table[column_name]
+        null_count = column.null_count
+        if null_count > 0:
+            columns_with_nulls.append(column_name)
+
+    if columns_with_nulls:
+        columns_str = ", ".join(columns_with_nulls)
+        raise InvalidDataError(
+            f"Parameter values must be non-null for all realizations. "
+            f"Parameter table contains {len(columns_with_nulls)} columns with null/NaN values: {columns_str}.",
             Service.SUMO,
         )
 
