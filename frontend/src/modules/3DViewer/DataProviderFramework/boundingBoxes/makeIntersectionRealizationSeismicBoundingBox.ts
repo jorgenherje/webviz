@@ -10,7 +10,7 @@ export function makeIntersectionRealizationSeismicBoundingBox({
     getStoredData,
 }: TransformerArgs<any, IntersectionRealizationSeismicData, IntersectionRealizationSeismicStoredData>): BBox | null {
     const data = getData();
-    const polyline = getStoredData("seismicFencePolylineWithSectionLengths");
+    const polyline = getStoredData("seismicFenceResampledPolylineWithSectionLengths");
     if (!polyline || !data) {
         return null;
     }

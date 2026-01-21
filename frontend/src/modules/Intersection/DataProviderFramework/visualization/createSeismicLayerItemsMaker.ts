@@ -69,7 +69,9 @@ export function createSeismicLayerItemsMaker({
         getSetting(Setting.WELLBORE_EXTENSION_LENGTH),
     );
 
-    const seismicFenceSectionLengths = getStoredData("seismicFencePolylineWithSectionLengths")?.actualSectionLengths;
+    const seismicFenceSectionLengths = getStoredData(
+        "seismicFenceResampledPolylineWithSectionLengths",
+    )?.actualSectionLengths;
 
     if (!fenceData || !seismicFenceSectionLengths || !colorScale || isLoading || !valueRange) {
         return null;

@@ -7,7 +7,7 @@ import { makeCacheBustingQueryParam } from "@framework/utils/queryUtils";
 import { assertNonNull } from "@lib/utils/assertNonNull";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import type { PolylineWithSectionLengths } from "@modules/_shared/Intersection/intersectionPolylineTypes";
-import { createSectionWiseResampledPolylineWithSectionLengths } from "@modules/_shared/Intersection/intersectionPolylineUtils";
+import { resamplePolylineToSeismicCubeCellCenters } from "@modules/_shared/Intersection/seismicCubePolylineResampling";
 import type { SeismicFenceData_trans } from "@modules/_shared/Intersection/seismicIntersectionTransform";
 import { transformSeismicFenceData } from "@modules/_shared/Intersection/seismicIntersectionTransform";
 import { createSeismicFencePolylineFromPolylineXy } from "@modules/_shared/Intersection/seismicIntersectionUtils";
@@ -46,7 +46,7 @@ type SettingsWithTypes = MakeSettingTypesMap<IntersectionRealizationSeismicSetti
 
 export type IntersectionRealizationSeismicStoredData = {
     sourcePolylineWithSectionLengths: PolylineWithSectionLengths;
-    seismicFencePolylineWithSectionLengths: PolylineWithSectionLengths;
+    seismicFenceResampledPolylineWithSectionLengths: PolylineWithSectionLengths;
 };
 
 export enum SeismicDataSource {
@@ -217,11 +217,6 @@ export class IntersectionRealizationSeismicProvider
                 return [];
             }
 
-            // const firstMetaSpec = seismicCubeMetaList[0].spec;
-            // if (seismicCubeMetaList.some((meta) => !isEqual(meta.spec, firstMetaSpec))) {
-            //     throw new Error("Inconsistent seismic cube specifications found for the selected ensemble.");
-            // }
-
             // Get seismic attributes that are depth of correct data source
             const doRequestObservation = this._dataSource === SeismicDataSource.OBSERVED;
             const availableAttributes = Array.from(
@@ -304,11 +299,11 @@ export class IntersectionRealizationSeismicProvider
             return intersectionPolylineWithSectionLengths;
         });
 
-        storedDataUpdater("seismicFencePolylineWithSectionLengths", ({ getHelperDependency, getLocalSetting }) => {
+        storedDataUpdater("seismicFenceResampledPolylineWithSectionLengths", ({ getHelperDependency }) => {
+            const seismicCubeMetaList = getHelperDependency(ensembleSeismicCubeMetaListDep);
             const intersectionPolylineWithSectionLengths = getHelperDependency(
                 intersectionPolylineWithSectionLengthsDep,
             );
-            const sampleResolutionInMeters = getLocalSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) ?? 1;
 
             // If no intersection is selected, or polyline is empty, cancel update
             if (
@@ -318,10 +313,17 @@ export class IntersectionRealizationSeismicProvider
                 return { polylineUtmXy: [], actualSectionLengths: [] };
             }
 
-            // Resample the polyline, as seismic fence is created by one trace per (x,y) point in the polyline
-            const resampledPolylineWithSectionLengths = createSectionWiseResampledPolylineWithSectionLengths(
+            // If no seismic cube metadata, return original polyline
+            if (!seismicCubeMetaList || seismicCubeMetaList.length === 0) {
+                return intersectionPolylineWithSectionLengths;
+            }
+
+            // Resample the polyline to have one point per seismic cube cell center.
+            // The seismic fence API returns one trace per (x,y) point in the polyline,
+            // so this ensures we get exactly one trace per cell the polyline crosses.
+            const resampledPolylineWithSectionLengths = resamplePolylineToSeismicCubeCellCenters(
                 intersectionPolylineWithSectionLengths,
-                sampleResolutionInMeters,
+                seismicCubeMetaList[0].spec,
             );
 
             return resampledPolylineWithSectionLengths;
@@ -342,7 +344,7 @@ export class IntersectionRealizationSeismicProvider
         const attribute = assertNonNull(getSetting(Setting.ATTRIBUTE), "No attribute selected");
         const timeOrInterval = getSetting(Setting.TIME_OR_INTERVAL);
         const seismicFencePolylineUtmXy = assertNonNull(
-            getStoredData("seismicFencePolylineWithSectionLengths"),
+            getStoredData("seismicFenceResampledPolylineWithSectionLengths"),
             "No seismic fence polyline found in stored data",
         ).polylineUtmXy;
 

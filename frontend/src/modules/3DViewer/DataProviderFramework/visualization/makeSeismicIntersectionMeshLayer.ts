@@ -39,7 +39,7 @@ export function makeSeismicIntersectionMeshLayer(
     const colorScaleSpec = getSetting(Setting.COLOR_SCALE);
     const opacityPercent = (getSetting(Setting.OPACITY_PERCENT) ?? 100) / 100;
     const valueRange = getDataValueRange();
-    const polyline = getStoredData("seismicFencePolylineWithSectionLengths");
+    const polyline = getStoredData("seismicFenceResampledPolylineWithSectionLengths");
 
     if (!fenceData || !polyline) {
         return null;
