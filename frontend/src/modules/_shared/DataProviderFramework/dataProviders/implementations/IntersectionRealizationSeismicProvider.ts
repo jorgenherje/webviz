@@ -217,6 +217,11 @@ export class IntersectionRealizationSeismicProvider
                 return [];
             }
 
+            // const firstMetaSpec = seismicCubeMetaList[0].spec;
+            // if (seismicCubeMetaList.some((meta) => !isEqual(meta.spec, firstMetaSpec))) {
+            //     throw new Error("Inconsistent seismic cube specifications found for the selected ensemble.");
+            // }
+
             // Get seismic attributes that are depth of correct data source
             const doRequestObservation = this._dataSource === SeismicDataSource.OBSERVED;
             const availableAttributes = Array.from(
