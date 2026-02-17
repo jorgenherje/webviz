@@ -1,11 +1,10 @@
-import { expose } from "comlink";
-
 import type {
     SummaryVectorObservations_api,
     VectorHistoricalData_api,
     VectorRealizationData_api,
     VectorStatisticData_api,
 } from "@api";
+import { exposeWorkerApi } from "@lib/hooks/useWebWorker";
 import type { CsvFile } from "@lib/utils/csvConvertUtils";
 
 import { VisualizationMode } from "../../../typesAndEnums";
@@ -63,5 +62,5 @@ export async function assembleCsvFiles(
 }
 
 const workerApi = { assembleCsvFiles };
-expose(workerApi);
+exposeWorkerApi(workerApi);
 export type CsvAssemblyWorkerApi = typeof workerApi;
