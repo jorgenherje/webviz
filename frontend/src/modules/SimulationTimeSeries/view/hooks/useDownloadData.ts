@@ -2,8 +2,8 @@ import React from "react";
 
 import { useAtomValue } from "jotai";
 
+import { useWebWorkerProxy } from "@lib/hooks/useWebWorker";
 import { createZipFilename, downloadZip } from "@lib/utils/downloadUtils";
-import { CsvAssemblerService } from "@modules/_shared/csvAssemblerService";
 import { makeDistinguishableEnsembleDisplayName } from "@modules/_shared/ensembleNameUtils";
 
 import {
@@ -20,9 +20,12 @@ import {
     loadedVectorSpecificationsAndRealizationDataAtom,
     loadedVectorSpecificationsAndStatisticsDataAtom,
 } from "../atoms/derivedAtoms";
+import type { CsvAssemblyWorkerApi } from "../utils/CsvAssembly/csvAssembly";
+import CsvAssemblyWorker from "../utils/CsvAssembly/csvAssembly?worker";
 
 export function useDownloadData(): void {
     const csvDownloadRequestCounter = useAtomValue(csvDownloadRequestCounterAtom);
+    const prevCounterRef = React.useRef(csvDownloadRequestCounter);
 
     const visualizationMode = useAtomValue(visualizationModeAtom);
     const statisticsSelection = useAtomValue(statisticsSelectionAtom);
@@ -37,13 +40,7 @@ export function useDownloadData(): void {
     const loadedHistoricalData = useAtomValue(loadedRegularEnsembleVectorSpecificationsAndHistoricalDataAtom);
     const loadedObservationData = useAtomValue(loadedVectorSpecificationsAndObservationDataAtom);
 
-    const prevCounterRef = React.useRef(csvDownloadRequestCounter);
-    const csvAssemblerServiceRef = React.useRef(new CsvAssemblerService());
-
-    React.useEffect(() => {
-        const service = csvAssemblerServiceRef.current;
-        return () => service.terminate();
-    }, []);
+    const csvAssemblyWorker = useWebWorkerProxy<CsvAssemblyWorkerApi>(CsvAssemblyWorker);
 
     React.useEffect(
         function assembleCsvAndDownload() {
@@ -88,7 +85,8 @@ export function useDownloadData(): void {
                         data: entry.data,
                     }));
 
-                    const files = await csvAssemblerServiceRef.current.api.assembleSimulationTimeSeriesCsv(
+                    // Assemble csv files in web worker to avoid blocking the main thread.
+                    const files = await csvAssemblyWorker.assembleCsvFiles(
                         visualizationMode,
                         realizationData,
                         statisticsData,
@@ -102,10 +100,6 @@ export function useDownloadData(): void {
                     if (cancelled || files.length === 0) {
                         return;
                     }
-
-                    const now = new Date();
-                    const timestamp = now.toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "_");
-                    const zipFilename = `SimulationTimeSeries_${timestamp}.zip`;
                     const zipFilename = createZipFilename("SimulationTimeSeries");
 
                     const endTime = performance.now();
