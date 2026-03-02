@@ -2,7 +2,7 @@ import type React from "react";
 
 import { FilterAlt, History, Palette, WebAsset } from "@mui/icons-material";
 
-import { GuiState, RightDrawerContent, useGuiState, useGuiValue } from "@framework/GuiMessageBroker";
+import { GuiEvent, GuiState, RightDrawerContent, useGuiState, useGuiValue } from "@framework/GuiMessageBroker";
 import { PrivateWorkbenchSessionTopic } from "@framework/internal/WorkbenchSession/PrivateWorkbenchSession";
 import type { Workbench } from "@framework/Workbench";
 import { Badge } from "@lib/components/Badge";
@@ -52,11 +52,6 @@ export const RightNavBar: React.FC<RightNavBarProps> = (props) => {
         }
     }
 
-    function hideSettingsPanel() {
-        setRightSettingsPanelWidth(0);
-        setDrawerContent(undefined);
-    }
-
     function handleSelectPanelContent(targetContent: RightDrawerContent) {
         const isSameContent = targetContent === drawerContent;
         if (isSameContent && rightSettingsPanelIsCollapsed) {
@@ -64,7 +59,7 @@ export const RightNavBar: React.FC<RightNavBarProps> = (props) => {
             return;
         }
         if (isSameContent) {
-            hideSettingsPanel();
+            guiMessageBroker.publishEvent(GuiEvent.RequestRightSettingsPanelClose);
             return;
         }
         // Switch content

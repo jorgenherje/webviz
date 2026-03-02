@@ -32,6 +32,18 @@ export const RightSettingsPanel: React.FC<RightSettingsPanelProps> = (props) => 
         setRightDrawerContent(undefined);
     }
 
+    const handleOnCloseRef = React.useRef(handleOnClose);
+    handleOnCloseRef.current = handleOnClose;
+
+    React.useEffect(
+        function subscribeToSettingsPanelCloseEvent() {
+            return guiMessageBroker.subscribeToEvent(GuiEvent.RequestRightSettingsPanelClose, () => {
+                handleOnCloseRef.current();
+            });
+        },
+        [guiMessageBroker],
+    );
+
     function handleDialogSaveClick() {
         guiMessageBroker.publishEvent(GuiEvent.UnsavedRealizationFilterSettingsAction, {
             action: UnsavedChangesAction.Save,
