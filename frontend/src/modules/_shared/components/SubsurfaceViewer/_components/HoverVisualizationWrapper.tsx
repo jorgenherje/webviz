@@ -26,15 +26,15 @@ import { ReadoutWrapper } from "./ReadoutWrapper";
  * so only it re-renders on position changes (not the whole InteractionWrapper subtree).
  */
 export class PolylineMarkerStore {
-    private _position: [number, number] | null = null;
+    private _position: [number, number, number] | null = null;
     private _listeners = new Set<() => void>();
 
-    setPosition(position: [number, number] | null): void {
+    setPosition(position: [number, number, number] | null): void {
         this._position = position;
         for (const listener of this._listeners) listener();
     }
 
-    getPosition(): [number, number] | null {
+    getPosition(): [number, number, number] | null {
         return this._position;
     }
 
@@ -198,7 +198,7 @@ function usePolylineHoverMarkerLayer(markerStore: PolylineMarkerStore | undefine
 
     return new ScatterplotLayer({
         id: POLYLINE_HOVER_MARKER_LAYER_ID,
-        data: position ? [{ position: [position[0], position[1], 0] as [number, number, number] }] : [],
+        data: position ? [{ position: position }] : [],
         getPosition: (d: { position: [number, number, number] }) => d.position,
         getRadius: 8,
         radiusUnits: "pixels",

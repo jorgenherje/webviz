@@ -210,7 +210,7 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
                 return;
             }
             const plugin = polylinesPluginRef.current;
-            if (!plugin || plugin.getEditingMode() === PolylineEditingMode.NONE) {
+            if (!plugin) {
                 return;
             }
             const polyline = plugin.getPolylines().find((p) => p.id === externalPolylineHoverData.polylineId);

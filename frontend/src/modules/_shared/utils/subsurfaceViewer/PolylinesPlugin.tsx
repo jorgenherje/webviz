@@ -332,6 +332,25 @@ export class PolylinesPlugin extends DeckGlPlugin implements PublishSubscribe<Po
         }
     }
 
+    handleLayerHover(pickingInfo: PickingInfo): void {
+        if (this._editingMode !== PolylineEditingMode.IDLE && this._editingMode !== PolylineEditingMode.NONE) {
+            return;
+        }
+
+        if (isPolylinesLayerPickingInfo(pickingInfo) && pickingInfo.polylineId && pickingInfo.coordinate) {
+            const polyline = this._polylines.find((p) => p.id === pickingInfo.polylineId);
+            if (polyline && polyline.path.length >= 2) {
+                const [x, y] = pickingInfo.coordinate;
+                const lengthAlong = lengthAlongAtPosition(polyline.path, x, y);
+                const newHoverData = { polylineId: polyline.id, lengthAlong };
+                if (!isEqual(this._polylineHoverData, newHoverData)) {
+                    this._polylineHoverData = newHoverData;
+                    this._publishSubscribeDelegate.notifySubscribers(PolylinesPluginTopic.POLYLINE_HOVER);
+                }
+            }
+        }
+    }
+
     handleGlobalMouseHover(pickingInfo: PickingInfo): void {
         if (this._editingMode === PolylineEditingMode.DRAW) {
             if (!pickingInfo.coordinate) {
@@ -342,20 +361,7 @@ export class PolylinesPlugin extends DeckGlPlugin implements PublishSubscribe<Po
             return;
         }
 
-        if (this._editingMode === PolylineEditingMode.IDLE) {
-            if (isPolylinesLayerPickingInfo(pickingInfo) && pickingInfo.polylineId && pickingInfo.coordinate) {
-                const polyline = this._polylines.find((p) => p.id === pickingInfo.polylineId);
-                if (polyline && polyline.path.length >= 2) {
-                    const [x, y] = pickingInfo.coordinate;
-                    const lengthAlong = lengthAlongAtPosition(polyline.path, x, y);
-                    const newHoverData = { polylineId: polyline.id, lengthAlong };
-                    if (!isEqual(this._polylineHoverData, newHoverData)) {
-                        this._polylineHoverData = newHoverData;
-                        this._publishSubscribeDelegate.notifySubscribers(PolylinesPluginTopic.POLYLINE_HOVER);
-                    }
-                    return;
-                }
-            }
+        if (this._editingMode === PolylineEditingMode.IDLE || this._editingMode === PolylineEditingMode.NONE) {
             if (this._polylineHoverData !== null) {
                 this._polylineHoverData = null;
                 this._publishSubscribeDelegate.notifySubscribers(PolylinesPluginTopic.POLYLINE_HOVER);
@@ -551,6 +557,7 @@ export class PolylinesPlugin extends DeckGlPlugin implements PublishSubscribe<Po
     }
 
     getLayers(): Layer<any>[] {
+        const hasVisiblePolylines = this._visiblePolylineIds.length > 0;
         const layers: Layer<any>[] = [
             new PolylinesLayer({
                 id: super.makeLayerId("polylines-layer"),
@@ -564,8 +571,10 @@ export class PolylinesPlugin extends DeckGlPlugin implements PublishSubscribe<Po
                     this._editingMode === PolylineEditingMode.NONE
                         ? undefined
                         : (this._selectedPolylineId ?? undefined),
-                hoverable: this._editingMode === PolylineEditingMode.IDLE,
-                visible: this._editingMode !== PolylineEditingMode.NONE,
+                hoverable:
+                    this._editingMode === PolylineEditingMode.IDLE ||
+                    (this._editingMode === PolylineEditingMode.NONE && hasVisiblePolylines),
+                visible: this._editingMode !== PolylineEditingMode.NONE || hasVisiblePolylines,
             }),
         ];
 
