@@ -10,6 +10,7 @@ import type { ComboboxItems } from "@lib/components/Combobox/types";
 import { RadioCompositions } from "@lib/components/Radio/compositions";
 import { Select, type SelectOption } from "@lib/components/Select";
 import { Setting } from "@lib/components/Setting";
+import { useAddErrorAnnotationsAsActionRequiredToStatusWriter } from "@modules/_shared/hooks/useAddStatusWriterMessages";
 import { useMakePersistableFixableAtomAnnotations } from "@modules/_shared/hooks/useMakePersistableFixableAtomAnnotations";
 import { propagateQueryErrorToStatusWriter } from "@modules/_shared/utils/propagateApiErrorToStatusWriter";
 
@@ -39,6 +40,7 @@ import { vfpTablesQueryAtom, vfpTableQueryAtom } from "./atoms/queryAtoms";
 
 export function Settings({ workbenchSession, settingsContext }: ModuleSettingsProps<Interfaces>) {
     const statusWriter = useSettingsStatusWriter(settingsContext);
+    const handlePanelAnnotationsChange = useAddErrorAnnotationsAsActionRequiredToStatusWriter(statusWriter);
     const ensembleSet = useEnsembleSet(workbenchSession);
 
     const vfpTableQuery = useAtomValue(vfpTableQueryAtom);
@@ -122,7 +124,7 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
 
     return (
         <Setting.ScrollArea>
-            <Setting.Panel>
+            <Setting.Panel onAnnotationsChange={handlePanelAnnotationsChange}>
                 <Setting.Section title="Data" defaultOpen>
                     <Setting.Field label="Ensemble" annotations={selectedEnsembleIdentAnnotations}>
                         <EnsembleDropdown

@@ -6,6 +6,7 @@ import { EnsembleColorTile } from "@framework/components/EnsembleColorTile/ensem
 import { EnsemblePicker } from "@framework/components/EnsemblePicker";
 import type { ModuleSettingsProps } from "@framework/Module";
 import { RegularEnsembleIdent as RegularEnsembleIdentClass } from "@framework/RegularEnsembleIdent";
+import { useSettingsStatusWriter } from "@framework/StatusWriter";
 import { isEnsembleRealizationFilterEffective } from "@framework/utils/realizationFilterUtils";
 import { useEnsembleRealizationFilterFunc, useEnsembleSet } from "@framework/WorkbenchSession";
 import { CheckboxCompositions } from "@lib/components/Checkbox/compositions";
@@ -13,6 +14,7 @@ import { Combobox } from "@lib/components/Combobox";
 import { Hidden } from "@lib/components/Hidden";
 import { Setting } from "@lib/components/Setting";
 import { ParametersSelector } from "@modules/_shared/components/ParameterSelector";
+import { useAddErrorAnnotationsAsActionRequiredToStatusWriter } from "@modules/_shared/hooks/useAddStatusWriterMessages";
 import { useMakePersistableFixableAtomAnnotations } from "@modules/_shared/hooks/useMakePersistableFixableAtomAnnotations";
 
 import type { Interfaces } from "../interfaces";
@@ -47,7 +49,9 @@ import {
 } from "./atoms/persistableFixableAtoms";
 import { ParameterSortingInfoContent } from "./components/ParameterSortingInfoContent";
 
-export function Settings({ workbenchSession }: ModuleSettingsProps<Interfaces>) {
+export function Settings({ workbenchSession, settingsContext }: ModuleSettingsProps<Interfaces>) {
+    const statusWriter = useSettingsStatusWriter(settingsContext);
+    const handlePanelAnnotationsChange = useAddErrorAnnotationsAsActionRequiredToStatusWriter(statusWriter);
     const ensembleSet = useEnsembleSet(workbenchSession);
     const filterEnsembleRealizationsFunc = useEnsembleRealizationFilterFunc(workbenchSession);
 
@@ -113,7 +117,7 @@ export function Settings({ workbenchSession }: ModuleSettingsProps<Interfaces>) 
 
     return (
         <Setting.ScrollArea>
-            <Setting.Panel>
+            <Setting.Panel onAnnotationsChange={handlePanelAnnotationsChange}>
                 <Setting.Section title="Data" defaultOpen>
                     <Setting.Field label="Analysis mode">
                         <Combobox

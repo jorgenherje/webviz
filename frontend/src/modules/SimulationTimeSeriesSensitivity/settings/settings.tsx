@@ -18,6 +18,7 @@ import { Setting } from "@lib/components/Setting";
 import type { SmartNodeSelectorSelection } from "@lib/components/SmartNodeSelector";
 import { SwitchCompositions } from "@lib/components/Switch/compositions";
 import { VectorSelector } from "@modules/_shared/components/VectorSelector";
+import { useAddErrorAnnotationsAsActionRequiredToStatusWriter } from "@modules/_shared/hooks/useAddStatusWriterMessages";
 import { useMakePersistableFixableAtomAnnotations } from "@modules/_shared/hooks/useMakePersistableFixableAtomAnnotations";
 import { propagateQueryErrorToStatusWriter } from "@modules/_shared/utils/propagateApiErrorToStatusWriter";
 
@@ -43,6 +44,7 @@ export function Settings(props: ModuleSettingsProps<Interfaces>) {
     const ensembleSet = useEnsembleSet(props.workbenchSession);
 
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
+    const handlePanelAnnotationsChange = useAddErrorAnnotationsAsActionRequiredToStatusWriter(statusWriter);
     const selectedTimestampUtcMs = props.settingsContext.useViewToSettingsInterfaceValue("selectedTimestampUtcMs");
 
     const [selectedRegularEnsembleIdent, setSelectedRegularEnsembleIdent] = useAtom(selectedRegularEnsembleIdentAtom);
@@ -132,7 +134,7 @@ export function Settings(props: ModuleSettingsProps<Interfaces>) {
 
     return (
         <Setting.ScrollArea>
-            <Setting.Panel>
+            <Setting.Panel onAnnotationsChange={handlePanelAnnotationsChange}>
                 <Setting.Section title="Data" defaultOpen>
                     <Setting.Field label="Ensemble" annotations={selectedRegularEnsembleIdentAnnotations}>
                         <EnsembleDropdown

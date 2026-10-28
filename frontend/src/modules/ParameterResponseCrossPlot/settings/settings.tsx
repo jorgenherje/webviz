@@ -3,12 +3,14 @@ import React from "react";
 import { useAtom, useSetAtom } from "jotai";
 
 import type { ModuleSettingsProps } from "@framework/Module";
+import { useSettingsStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, useRefStableSyncSettingsHelper } from "@framework/SyncSettings";
 import { KeyKind } from "@framework/types/dataChannnel";
 import { CheckboxCompositions } from "@lib/components/Checkbox/compositions";
 import { Combobox } from "@lib/components/Combobox";
 import { Select } from "@lib/components/Select";
 import { Setting } from "@lib/components/Setting";
+import { useAddErrorAnnotationsAsActionRequiredToStatusWriter } from "@modules/_shared/hooks/useAddStatusWriterMessages";
 import { useMakePersistableFixableAtomAnnotations } from "@modules/_shared/hooks/useMakePersistableFixableAtomAnnotations";
 import { useSyncSetting } from "@modules/_shared/hooks/useSyncSetting";
 
@@ -22,6 +24,8 @@ const plotTypes = [{ value: PlotType.ParameterResponseCrossPlot, label: "Paramet
 
 //-----------------------------------------------------------------------------------------------------------
 export function Settings(props: ModuleSettingsProps<Interfaces>) {
+    const statusWriter = useSettingsStatusWriter(props.settingsContext);
+    const handlePanelAnnotationsChange = useAddErrorAnnotationsAsActionRequiredToStatusWriter(statusWriter);
     const [plotType, setPlotType] = useAtom(plotTypeAtom);
     const [parameterIdentString, setParameterIdentString] = useAtom(parameterIdentStringAtom);
     const [showTrendline, setShowTrendline] = useAtom(showTrendlineAtom);
@@ -75,7 +79,7 @@ export function Settings(props: ModuleSettingsProps<Interfaces>) {
 
     return (
         <Setting.ScrollArea>
-            <Setting.Panel>
+            <Setting.Panel onAnnotationsChange={handlePanelAnnotationsChange}>
                 <Setting.Section title="Plot settings" defaultOpen>
                     <Setting.Field label="Plot type">
                         <Combobox<PlotType>

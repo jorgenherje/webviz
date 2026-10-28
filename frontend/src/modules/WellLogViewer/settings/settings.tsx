@@ -17,6 +17,7 @@ import { Combobox } from "@lib/components/Combobox";
 import type { SelectOption } from "@lib/components/Select";
 import { Setting } from "@lib/components/Setting";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
+import { useAddErrorAnnotationsAsActionRequiredToStatusWriter } from "@modules/_shared/hooks/useAddStatusWriterMessages";
 import { useMakePersistableFixableAtomAnnotations } from "@modules/_shared/hooks/useMakePersistableFixableAtomAnnotations";
 import { propagateQueryErrorToStatusWriter } from "@modules/_shared/utils/propagateApiErrorToStatusWriter";
 
@@ -88,6 +89,7 @@ export function Settings(props: ModuleSettingsProps<InterfaceTypes>) {
 
     // Error messages
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
+    const handlePanelAnnotationsChange = useAddErrorAnnotationsAsActionRequiredToStatusWriter(statusWriter);
     // A disabled query keeps its cached error, which must not be reported for an invalid field
     const wellboreHeadersErrorMessage = wellboreHeadersQuery.isEnabled
         ? (propagateQueryErrorToStatusWriter(wellboreHeadersQuery, statusWriter) ?? "")
@@ -117,26 +119,28 @@ export function Settings(props: ModuleSettingsProps<InterfaceTypes>) {
                 defaultOpen
             >
                 <Collapsible.Content layoutClassName="flex flex-col gap-y-xs">
-                    <Setting.Field label="Field" annotations={fieldSettingAnnotations}>
-                        <FieldDropdown
-                            value={selectedField.value}
-                            ensembleSet={ensembleSet}
-                            fallbackFieldList={allFields.map((f) => f.fieldIdentifier)}
-                            onChange={setSelectedField}
-                        />
-                    </Setting.Field>
+                    <Setting.Panel onAnnotationsChange={handlePanelAnnotationsChange}>
+                        <Setting.Field label="Field" annotations={fieldSettingAnnotations}>
+                            <FieldDropdown
+                                value={selectedField.value}
+                                ensembleSet={ensembleSet}
+                                fallbackFieldList={allFields.map((f) => f.fieldIdentifier)}
+                                onChange={setSelectedField}
+                            />
+                        </Setting.Field>
 
-                    <Setting.Field
-                        label="Wellbore"
-                        annotations={wellboreSettingAnnotations}
-                        errorOverlay={wellboreHeadersErrorMessage}
-                    >
-                        <Combobox
-                            items={makeWellHeaderOptions(wellboreHeadersQuery.data ?? [])}
-                            value={selectedWellboreHeader ? selectedWellboreHeader.wellboreUuid : null}
-                            onValueChange={handleWellboreSelectionChange}
-                        />
-                    </Setting.Field>
+                        <Setting.Field
+                            label="Wellbore"
+                            annotations={wellboreSettingAnnotations}
+                            errorOverlay={wellboreHeadersErrorMessage}
+                        >
+                            <Combobox
+                                items={makeWellHeaderOptions(wellboreHeadersQuery.data ?? [])}
+                                value={selectedWellboreHeader ? selectedWellboreHeader.wellboreUuid : null}
+                                onValueChange={handleWellboreSelectionChange}
+                            />
+                        </Setting.Field>
+                    </Setting.Panel>
                 </Collapsible.Content>
             </Collapsible.Group>
             <Collapsible.Group title="Log viewer settings" defaultOpen>

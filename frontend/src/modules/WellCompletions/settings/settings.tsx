@@ -22,6 +22,7 @@ import { TextInput } from "@lib/components/TextInput";
 import { Tooltip } from "@lib/components/Tooltip";
 import { SortAscendingIcon, SortDescendingIcon } from "@lib/icons";
 import type { ColorSet } from "@lib/utils/ColorSet";
+import { useAddErrorAnnotationsAsActionRequiredToStatusWriter } from "@modules/_shared/hooks/useAddStatusWriterMessages";
 import { useMakePersistableFixableAtomAnnotations } from "@modules/_shared/hooks/useMakePersistableFixableAtomAnnotations";
 
 import type { Interfaces } from "../interfaces";
@@ -110,6 +111,7 @@ export const Settings = (props: ModuleSettingsProps<Interfaces>) => {
         }
     }, [prevStratigraphyColorSet, setSelectedStratigraphyColorSet, stratigraphyColorSet]);
 
+    const handlePanelAnnotationsChange = useAddErrorAnnotationsAsActionRequiredToStatusWriter(statusWriter);
     useMakeSettingsStatusWriterMessages(statusWriter);
 
     function handleEnsembleSelectionChange(newEnsembleIdent: RegularEnsembleIdent | null) {
@@ -178,7 +180,7 @@ export const Settings = (props: ModuleSettingsProps<Interfaces>) => {
 
     return (
         <Setting.ScrollArea>
-            <Setting.Panel>
+            <Setting.Panel onAnnotationsChange={handlePanelAnnotationsChange}>
                 <Setting.Section title="Data" defaultOpen>
                     <Setting.Field label="Ensemble" annotations={selectedEnsembleIdentAnnotations}>
                         <EnsembleDropdown
