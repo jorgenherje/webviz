@@ -46,12 +46,14 @@ import {
     wellSortDirectionAtom,
     timeAggregationModeAtom,
 } from "./atoms/baseAtoms";
-import { availableRealizationsAtom, sortedCompletionDatesAtom } from "./atoms/derivedAtoms";
 import {
     effectiveCompletionDateIndexAtom,
     effectiveRealizationAtom,
     isCompletionDateIndexDashboardControlledAtom,
     isRealizationDashboardControlledAtom,
+} from "./atoms/dashboardSettingAtoms";
+import { availableRealizationsAtom, sortedCompletionDatesAtom } from "./atoms/derivedAtoms";
+import {
     selectedCompletionDateIndexAtom,
     selectedCompletionDateIndexRangeAtom,
     selectedEnsembleIdentAtom,

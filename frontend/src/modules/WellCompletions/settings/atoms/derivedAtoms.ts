@@ -14,8 +14,8 @@ import {
     wellSortDirectionAtom,
     timeAggregationModeAtom,
 } from "./baseAtoms";
+import { effectiveCompletionDateIndexAtom } from "./dashboardSettingAtoms";
 import {
-    effectiveCompletionDateIndexAtom,
     selectedCompletionDateIndexRangeAtom,
     selectedEnsembleIdentAtom,
 } from "./persistableFixableAtoms";
@@ -30,6 +30,7 @@ export const availableRealizationsAtom = atom<number[]>((get) => {
         : [];
     return validRealizationNumbers;
 });
+
 
 
 export const dataLoadingStatusAtom = atom<DataLoadingStatus>((get) => {

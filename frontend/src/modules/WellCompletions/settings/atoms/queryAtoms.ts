@@ -6,8 +6,9 @@ import { encodeAsUintListStr } from "@lib/utils/queryStringUtils";
 import { RealizationMode } from "@modules/WellCompletions/typesAndEnums";
 
 import { realizationModeAtom } from "./baseAtoms";
+import { effectiveRealizationAtom } from "./dashboardSettingAtoms";
 import { availableRealizationsAtom } from "./derivedAtoms";
-import { effectiveRealizationAtom, selectedEnsembleIdentAtom } from "./persistableFixableAtoms";
+import { selectedEnsembleIdentAtom } from "./persistableFixableAtoms";
 
 export const wellCompletionsQueryAtom = atomWithQuery((get) => {
     const { value: selectedEnsembleIdent, isValidInContext: ensembleIdentValid } = get(selectedEnsembleIdentAtom);

@@ -67,30 +67,42 @@ function makeDashboardValueAtom<TValue, TConstraints>(
     });
 }
 
+// The base atom is resolved lazily (on first read or write), so it may be defined after the atoms made from it -
+// e.g. when module atoms import each other in a cycle.
+type BaseAtomGetter<TAtomValue, TArgs extends unknown[], TResult> = () =>
+    | Atom<TAtomValue>
+    | WritableAtom<TAtomValue, TArgs, TResult>;
+
 function wrapAtom<TAtomValue, TArgs extends unknown[], TResult>(
-    baseAtom: Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>,
+    getBaseAtom: BaseAtomGetter<TAtomValue, TArgs, TResult>,
+    isWritable: boolean,
     read: (get: Getter) => TAtomValue,
 ): Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult> {
-    if ("write" in baseAtom) {
+    if (isWritable) {
         // Writes always go to the base atom - i.e. the consumer's own local value, which is kept while
         // the dashboard setting controls it and used again when it stops.
-        return atom(read, (_get, set, ...args: TArgs): TResult => set(baseAtom, ...args));
+        return atom(
+            read,
+            (_get, set, ...args: TArgs): TResult =>
+                set(getBaseAtom() as WritableAtom<TAtomValue, TArgs, TResult>, ...args),
+        );
     }
 
     return atom(read);
 }
 
 function makeOverrideAtom<TAtomValue, TArgs extends unknown[], TResult, TDashboardValue, TDashboardConstraints>(
-    baseAtom: Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>,
+    getBaseAtom: BaseAtomGetter<TAtomValue, TArgs, TResult>,
+    isWritable: boolean,
     instanceAtom: InstanceAtom<TDashboardValue, TDashboardConstraints>,
     mapDashboardValue: (dashboardValue: TDashboardValue, get: Getter) => TAtomValue,
 ) {
     const dashboardValueAtom = makeDashboardValueAtom(instanceAtom);
 
-    return wrapAtom(baseAtom, (get) => {
+    return wrapAtom(getBaseAtom, isWritable, (get) => {
         // Always read, even while dashboard - otherwise the base atom (and any effect it mounts, e.g. a
         // consumer's registration or a persistableFixableAtom's lifecycle) would be unmounted.
-        const baseValue = get(baseAtom);
+        const baseValue = get(getBaseAtom());
 
         if (!get(instanceAtom)) {
             return baseValue;
@@ -101,7 +113,8 @@ function makeOverrideAtom<TAtomValue, TArgs extends unknown[], TResult, TDashboa
 }
 
 function makeConsumerAtom<TAtomValue, TArgs extends unknown[], TResult, TDashboardValue, TDashboardConstraints>(
-    baseAtom: Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>,
+    getBaseAtom: BaseAtomGetter<TAtomValue, TArgs, TResult>,
+    isWritable: boolean,
     instanceAtom: InstanceAtom<TDashboardValue, TDashboardConstraints>,
     options: AtomWithDashboardSettingConsumerOptions<TDashboardValue, TDashboardConstraints>,
 ) {
@@ -143,11 +156,11 @@ function makeConsumerAtom<TAtomValue, TArgs extends unknown[], TResult, TDashboa
         }
     });
 
-    return wrapAtom(baseAtom, (get) => {
+    return wrapAtom(getBaseAtom, isWritable, (get) => {
         get(connectionEffect);
         get(contributionEffect);
 
-        return get(baseAtom);
+        return get(getBaseAtom());
     });
 }
 
@@ -189,7 +202,8 @@ export function atomWithDashboardSettingOverride<
     options: AtomWithDashboardSettingOverrideOptions<TAtomValue, TDashboardValue, TDashboardConstraints>,
 ) {
     return makeOverrideAtom(
-        baseAtom,
+        () => baseAtom,
+        "write" in baseAtom,
         makeDashboardSettingInstanceAtom(options.definition),
         options.mapDashboardValue,
     );
@@ -231,7 +245,12 @@ export function atomWithDashboardSettingConsumer<
     baseAtom: Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>,
     options: AtomWithDashboardSettingConsumerOptions<TDashboardValue, TDashboardConstraints>,
 ) {
-    return makeConsumerAtom(baseAtom, makeDashboardSettingInstanceAtom(options.definition), options);
+    return makeConsumerAtom(
+        () => baseAtom,
+        "write" in baseAtom,
+        makeDashboardSettingInstanceAtom(options.definition),
+        options,
+    );
 }
 
 export type MakeDashboardSettingAtomsOptions<TAtomValue, TDashboardValue, TDashboardConstraints> =
@@ -282,10 +301,11 @@ export function makeDashboardSettingAtoms<
     // Shared, so all three only subscribe to the dashboard's active settings once per store.
     const instanceAtom = makeDashboardSettingInstanceAtom(options.definition);
 
-    const consumerAtom = makeConsumerAtom(baseAtom, instanceAtom, options);
+    const isWritable = "write" in baseAtom;
+    const consumerAtom = makeConsumerAtom(() => baseAtom, isWritable, instanceAtom, options);
 
     return {
-        valueAtom: makeOverrideAtom(consumerAtom, instanceAtom, options.mapDashboardValue),
+        valueAtom: makeOverrideAtom(() => consumerAtom, isWritable, instanceAtom, options.mapDashboardValue),
         isDashboardControlledAtom: atom((get) => get(instanceAtom) !== null),
     };
 }
@@ -317,29 +337,34 @@ export type MakeDashboardPersistableFixableAtomsOptions<TValue, TDashboardValue,
  * dashboard.
  */
 export function makeDashboardPersistableFixableAtoms<TValue, TDashboardValue, TDashboardConstraints>(
-    baseAtom: PersistableFixableAtom<TValue>,
+    baseAtomOrGetter: PersistableFixableAtom<TValue> | (() => PersistableFixableAtom<TValue>),
     options: MakeDashboardPersistableFixableAtomsOptions<TValue, TDashboardValue, TDashboardConstraints>,
 ): DashboardSettingAtoms<PersistableFixableAtom<TValue>> {
     const instanceAtom = makeDashboardSettingInstanceAtom(options.definition);
 
+    // A getter lets the base atom be defined after these atoms, e.g. when the module's atom files import each other
+    const getBaseAtom = typeof baseAtomOrGetter === "function" ? baseAtomOrGetter : () => baseAtomOrGetter;
+
     const { getConstraints } = options;
     const sourceAtom = getConstraints
-        ? makeConsumerAtom(baseAtom, instanceAtom, {
+        ? makeConsumerAtom(getBaseAtom, true, instanceAtom, {
               definition: options.definition,
-              isLoading: (get) => get(baseAtom).isLoading,
+              isLoading: (get) => get(getBaseAtom()).isLoading,
               getConstraints: (get) => {
-                  const { isBlocked, depsHaveError } = get(baseAtom);
+                  const { isBlocked, depsHaveError } = get(getBaseAtom());
                   return isBlocked || depsHaveError ? null : getConstraints(get);
               },
           })
-        : baseAtom;
+        : null;
+    const getSourceAtom = () => sourceAtom ?? getBaseAtom();
 
     // The conditional mapping option can't be narrowed for generic value types here.
     const mapDashboardValue =
         (options as { mapDashboardValue?: MapDashboardValueToPersistableFixableValue<TValue, TDashboardValue> })
             .mapDashboardValue ?? ((dashboardValue: TDashboardValue) => dashboardValue as unknown as TValue);
 
-    const valueAtom = makeOverrideAtom(sourceAtom, instanceAtom, (dashboardValue, get) => {
+    const valueAtom = makeOverrideAtom(getSourceAtom, true, instanceAtom, (dashboardValue, get) => {
+        const baseAtom = getBaseAtom();
         const { isLoading, isBlocked, depsHaveError } = get(baseAtom);
         const value = mapDashboardValue(dashboardValue, get);
 
